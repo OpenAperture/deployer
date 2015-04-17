@@ -1,14 +1,3 @@
-#
-# == docker_controller.ex
-#
-# This module contains logic to parse Fleet service files into usable Fleet UnitOptions.
-#
-# == Contact
-#
-# Author::    Trantor (trantordevonly@perceptivesoftware.com)
-# Copyright:: 2014 Lexmark International Technology S.A.  All rights reserved.
-# License::   n/a
-#
 require Logger
 
 defmodule OpenAperture.Fleet.ServiceFileParser do
