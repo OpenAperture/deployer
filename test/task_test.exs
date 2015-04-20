@@ -35,8 +35,7 @@ defmodule OpenAperture.Deployer.Task.Test do
     assert_raise CaseClauseError, fn -> Deployer.Task.deploy(details) end
   end
 
-
-  test "deploy() failes when no unit associated with the repo" do
+  test "deploy() fails when no units are associated with the repo" do
     repo    = DeploymentRepo.create!(%{source_repo: "some_repo"})
     details = %{deployment_repo: repo}
 
