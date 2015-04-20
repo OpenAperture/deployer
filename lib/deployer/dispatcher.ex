@@ -60,12 +60,15 @@ defmodule OpenAperture.Deployer.Dispatcher do
   @doc false
   @spec subscribe_for_queue(String.t, Fun) :: :ok | {:error, String.t}
   defp subscribe_for_queue(name, handler) do
-     api      = ManagerApi.create!(Configuration.api_creds)
-     exchange = Configuration.current_exchange_id
-     broker   = Configuration.current_broker_id
-     queue    = QueueBuilder.build(api, name, exchange)
-     options  = ConnectionOptionsResolver.get_for_broker(api, broker)
-
-     subscribe(options, queue, handler)
+    if Mix.env != :test do
+      api      = ManagerApi.create!(Configuration.api_creds)
+      exchange = Configuration.current_exchange_id
+      broker   = Configuration.current_broker_id
+      queue    = QueueBuilder.build(api, name, exchange)
+      options  = ConnectionOptionsResolver.get_for_broker(api, broker)
+      subscribe(options, queue, handler)
+    else
+      :ok
+    end
   end
 end
