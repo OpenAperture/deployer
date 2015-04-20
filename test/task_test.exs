@@ -33,6 +33,8 @@ defmodule OpenAperture.Deployer.Task.Test do
     :meck.expect(GitHub, :clone, fn(_) -> :ok end)
 
     assert_raise CaseClauseError, fn -> Deployer.Task.deploy(details) end
+  after
+    :meck.unload(Github)
   end
 
   test "deploy() fails when no units are associated with the repo" do
@@ -49,6 +51,9 @@ defmodule OpenAperture.Deployer.Task.Test do
 
     assert Deployer.Task.deploy(details) ==
       {:error, "no hosts associated with the repo"}
+
+    after
+      :meck.unload(GitHub)
   end
 
   test "deploy() under normal conditions" do
@@ -72,5 +77,7 @@ defmodule OpenAperture.Deployer.Task.Test do
     :meck.expect(DeploymentRepo, :get_units, fn(_) -> [:one] end)
 
     assert Deployer.Task.deploy(details) == :ok
+  after
+    [GitHub, File, EtcdCluster, DeploymentRepo] |> Enum.each &(:meck.unload(&1))
   end
 end
