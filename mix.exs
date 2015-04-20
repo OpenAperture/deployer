@@ -22,6 +22,8 @@ defmodule OpenAperture.Deployer.Mixfile do
 
   defp deps do
     [
+      {:ex_doc, github: "elixir-lang/ex_doc", only: [:test]},
+      {:markdown, github: "devinus/markdown", only: [:test]},    
       {:timex, "~> 0.12.9"},
       {:amqp, "0.1.1"},
       {:fleet_api,
