@@ -21,7 +21,7 @@ defmodule OpenAperture.Deployer.Configuration do
     %{
       manager_url:         config_value("MANAGER_URL",         :openaperture_manager_api, :manager_url),
       oauth_login_url:     config_value("OAUTH_LOGIN_URL",     :openaperture_manager_api, :oauth_login_url),
-      oauth_client_id:     config_value("OAUTH_CLIENT_ID",     :openaperture_manager_api, :oauth_client_ud),
+      oauth_client_id:     config_value("OAUTH_CLIENT_ID",     :openaperture_manager_api, :oauth_client_id),
       oauth_client_secret: config_value("OAUTH_CLIENT_SECRET", :openaperture_manager_api, :oauth_client_secret)
     }
   end
