@@ -34,7 +34,7 @@ defmodule OpenAperture.Deployer.Task.Test do
 
     assert_raise CaseClauseError, fn -> Deployer.Task.deploy(details) end
   after
-    :meck.unload(Github)
+    :meck.unload(GitHub)
   end
 
   test "deploy() fails when no units are associated with the repo" do
