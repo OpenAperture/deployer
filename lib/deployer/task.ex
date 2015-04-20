@@ -60,6 +60,7 @@ defmodule OpenAperture.Deployer.Task do
   @doc false
   defp start_deploy(options) do
     deployment_repo = options.deployment_repo
+    source_repo     = DeploymentRepo.get_source_repo(deployment_repo)
     cluster         = create_cluster(options)
     host_cnt        = if cluster, do: EtcdCluster.get_host_count(cluster), else: 0
 
@@ -68,8 +69,8 @@ defmodule OpenAperture.Deployer.Task do
     new_units_cnt = if new_units, do: length(new_units), else: 0
 
     cond do
-      host_cnt      == 0 -> fail_w_no_hosts(options.source_repo)
-      new_units_cnt == 0 -> fail_w_no_units(options.source_repo)
+      host_cnt      == 0 -> fail_w_no_hosts(source_repo)
+      new_units_cnt == 0 -> fail_w_no_units(source_repo)
       true               -> do_deploy(cluster, host_cnt, new_units, options)
     end
   end
