@@ -5,6 +5,7 @@ defmodule OpenAperture.Deployer.Task.Test do
   alias Deployer.DeploymentRepo
   alias Deployer.EtcdCluster
   alias Deployer.GitHub
+  alias Deployer.Notifications
   alias Deployer.Task.Supervisor
 
   setup do
@@ -49,11 +50,14 @@ defmodule OpenAperture.Deployer.Task.Test do
     :meck.new(File, [:passthrough])
     :meck.expect(File, :ls!, fn(_) -> {:one, :two} end)
 
+    :meck.new(Notifications)
+    :meck.expect(Notifications, :send, fn(_) -> :ok end)
+
     assert Deployer.Task.deploy(details) ==
       {:error, "no hosts associated with the repo"}
 
     after
-      :meck.unload(GitHub)
+      [GitHub, File, Notifications] |> Enum.each(&:meck.unload(&1))
   end
 
   test "deploy() under normal conditions" do
