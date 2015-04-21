@@ -22,7 +22,7 @@ defmodule Notifications.Test do
     :meck.new(Notifications, [:passthrough])
     :meck.expect(Notifications, :publish, fn(_, _, _) -> :ok end)
 
-    assert Notifications.send("test") == :ok
+    assert Notifications.send_hipchat("test") == :ok
   after
     :meck.unload(Notifications)
   end
