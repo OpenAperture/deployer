@@ -19,11 +19,26 @@ defmodule OpenAperture.Deployer.Notifications do
   Sends an actual message to a the `notifications_hipchat` queue.
   Returns :ok if succeffully sent or :error otherwise.
   """
-  @spec send(Map) :: :ok | :error
-  def send(msg) do
+  @spec send_hipchat(Map) :: :ok | :error
+  def send_hipchat(msg) do
+    do_send("notifications_hipchat", msg)
+  end
+
+  @doc """
+  Sends messages to "deploy" queue.
+  Returns :ok or :error.
+  """
+  @spec send_orchestrator(term) :: :ok | :error
+  def send_orchestrator(msg) do
+    do_send("deploy", msg)
+  end
+
+  @doc false
+  @spec do_send(String.t, term) :: :ok | :error
+  defp do_send(queue_name, msg) do
     api                = ManagerApi.create!(Configuration.api_creds)
     exchange           = Configuration.current_exchange_id
-    queue              = QueueBuilder.build(api, "noitification_hipchat", exchange)
+    queue              = QueueBuilder.build(api, queue_name, exchange)
     connection_options =
       ConnectionOptionsResolver.get_for_broker(api, Configuration.current_broker_id)
 
