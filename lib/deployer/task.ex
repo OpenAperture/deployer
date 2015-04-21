@@ -26,29 +26,29 @@ defmodule OpenAperture.Deployer.Task do
   Returns `{:ok, pid}` or `{:error, reason}`
   """
   @spec deploy(Map) :: :ok | {:error, String.t}
-  def deploy(options) do
+  def deploy(details) do
     Logger.info("Beginning Fleet deployment...")
-    unless options[:deployment_repo], do: raise "No deployment repo provided"
+    unless details[:deployment_repo], do: raise "No deployment repo provided"
 
-    case DeploymentRepo.download(options.deployment_repo) do
-      :ok               -> start_deploy(options)
+    case DeploymentRepo.download(details.deployment_repo) do
+      :ok               -> start_deploy(details)
       {:errors, reason} -> {:error, reason}
     end
   end
 
   @doc "Re-deployes the Dockerized app to a CoreOS cluster."
   @spec redeploy(Map) :: :ok | {:error, String.t}
-  def redeploy(options) do
+  def redeploy(details) do
     Logger.info("Beginnging Fleet re-deployment...")
-    start_deploy(options)
+    start_deploy(details)
   end
 
-  def create_cluster(options) do
-    if options[:product_cluster_etcd_token] == nil do
+  def create_cluster(details) do
+    if details[:product_cluster_etcd_token] == nil do
       # legacy (no product deployment info)
-      DeploymentRepo.get_etcd_cluster(options.deployment_repo)
+      DeploymentRepo.get_etcd_cluster(details.deployment_repo)
     else
-      cluster = case EtcdCluster.create(options[:product_cluster_etcd_token]) do
+      cluster = case EtcdCluster.create(details[:product_cluster_etcd_token]) do
         {:ok, etcd_cluster} -> etcd_cluster
         {:error, reason}    ->
           Logger.error("Failed to create etcd cluster:  #{reason}")
@@ -58,10 +58,10 @@ defmodule OpenAperture.Deployer.Task do
   end
 
   @doc false
-  defp start_deploy(options) do
-    deployment_repo = options.deployment_repo
+  defp start_deploy(details) do
+    deployment_repo = details.deployment_repo
     source_repo     = DeploymentRepo.get_source_repo(deployment_repo)
-    cluster         = create_cluster(options)
+    cluster         = create_cluster(details)
     host_cnt        = if cluster, do: EtcdCluster.get_host_count(cluster), else: 0
 
     Logger.debug("Parsing units...")
@@ -71,48 +71,49 @@ defmodule OpenAperture.Deployer.Task do
     cond do
       host_cnt      == 0 -> fail_w_no_hosts(source_repo)
       new_units_cnt == 0 -> fail_w_no_units(source_repo)
-      true               -> do_deploy(cluster, host_cnt, new_units, options)
+      true               -> do_deploy(cluster, host_cnt, new_units, details)
     end
   end
 
   defp fail_w_no_hosts(repo) do
-    %{prefix:     "Deployment of #{repo} failed!",
+    Notifications.send_hipchat(%{
+      prefix:     "Deployment of #{repo} failed!",
       message:    "Unable to find hosts associated with the deployment repo!",
-      is_success:  false} |> Notifications.send
-
-    "Unable to complete deployment, no hosts associated with the repo!"
-      |> Logger.error
-
+      is_success:  false
+    })
+    Logger.error(
+     "Unable to complete deployment, no hosts associated with the repo!"
+    )
     {:error, "no hosts associated with the repo"}
   end
 
   defp fail_w_no_units(repo) do
     # Workflow.step_failed(_workflow, "Unable to complete deployment, no valid Units were retrieved from the deployment repo!")
-    %{prefix:     "Deployment of #{repo} failed!",
+    Notifications.send_hipchat(%{prefix:     "Deployment of #{repo} failed!",
       message:    "Unable to find valid units for this repo!",
-      is_success:  false} |> Notifications.send
-
-    "Unable to complete deployemnt, no valid Units were retrieved from the deployment repo"
-      |> Logger.error
-
+      is_success:  false
+    })
+    Logger.error(
+      "Unable to complete deployemnt, no valid Units were retrieved from the deployment repo"
+    )
     {:error, "No valid units were retrieved from the repo"}
   end
 
 
-  defp do_deploy(cluster, requested_instance_cnt, new_units, options) do
-    if options[:min_instance_cnt] && options[:min_instance_cnt] > requested_instance_cnt do
-      requested_instance_cnt = options[:min_instance_cnt]
+  defp do_deploy(cluster, requested_instance_cnt, new_units, details) do
+    if details[:min_instance_cnt] && details[:min_instance_cnt] > requested_instance_cnt do
+      requested_instance_cnt = details[:min_instance_cnt]
     end
 
     Logger.debug("Allocating #{requested_instance_cnt} ports on the cluster...");
 
-    if options[:product_cluster] && options[:product_component] do
+    if details[:product_cluster] && details[:product_component] do
       # find all current port entries so we can remove them after the deploy units finishes
       Logger.debug("Allocating ports on the cluster...")
-      # TODO: figure out where we store this stuff now after segregation
+      # TODO: replace this with querying ManagerAPI
       # available_ports = ProductCluster.allocate_ports_for_component(
-      #   options.product_cluster,
-      #   options.product_component,
+      #   details.product_cluster,
+      #   details.product_component,
       #   requested_instance_cnt
       # )
     else
@@ -125,20 +126,38 @@ defmodule OpenAperture.Deployer.Task do
     Logger.debug("Deploying units...")
     # Workflow.publish_success_notification(_workflow, "Preparing to deploy #{new_units_cnt} units onto #{host_cnt} hosts...")
     # deployed_units = EtcdCluster.deploy_units(cluster, new_units, available_ports)
+
+    %{
+      delivery_tag: delivery_tag,
+      subscription_handler: subscription_handler
+    } = details
+
     if EtcdCluster.deploy_units(cluster, new_units, available_ports) do
+      Notifications.send_hipchat(%{
+        prefix: details.deployment_repo |> DeploymentRepo.get_repo_name,
+        message: "Deployment completed",
+        is_success: true
+      })
+      SubscriptionHandler.acknowledge(subscription_handler, delivery_tag)
       :ok
     else
+      Notifications.send_hipchat(%{
+        prefix: details.deployment_repo |> DeploymentRepo.get_repo_name,
+        message: "Deployment failed",
+        is_success: false
+      })
+      SubscriptionHandler.reject(subscription_handler, delivery_tag)
       {:error, "No units deployed"}
     end
 
-    # ensure_router_configuration(options, cluster, deployed_units)
+    # ensure_router_configuration(details, cluster, deployed_units)
   end
 
-  defp ensure_router_configuration(options, cluster, units) do
-    case configure_router(options, cluster, units) do
+  defp ensure_router_configuration(details, cluster, units) do
+    case configure_router(details, cluster, units) do
       :ok ->
         Logger.info("Router configured")
-        %{subscription_handler: handler, delivery_tag: tag} = options
+        %{subscription_handler: handler, delivery_tag: tag} = details
         SubscriptionHandler.acknowledge(handler, tag)
       {:error, reason} ->
         Logger.error("Unable to configure Router: #{inspect reason}")
@@ -156,17 +175,17 @@ defmodule OpenAperture.Deployer.Task do
   end
 
   @doc false
-  defp configure_router(options, cluster, deployed_units) do
-    if options[:openaperture_router] do
-      case Router.validate_routing_options(options[:openaperture_router]) do
+  defp configure_router(details, cluster, deployed_units) do
+    if details[:openaperture_router] do
+      case Router.validate_routing_details(details[:openaperture_router]) do
         :ok ->
-          case update_router(options[:openaperture_router], cluster, deployed_units) do
+          case update_router(details[:openaperture_router], cluster, deployed_units) do
             :ok -> :ok
             {:error, errors} ->
               {:error, "Router returned the following errors: #{JSON.encode!(errors)}"}
           end
         {:error, errors} ->
-          {:error, "Routing options have been misconfigured: #{JSON.encode!(errors)}"}
+          {:error, "Routing details are broken: #{JSON.encode!(errors)}"}
       end
     else
       :ok
