@@ -4,21 +4,23 @@ OpenAperture Deployer
 [![Build Status](https://semaphoreci.com/api/v1/projects/945259c7-3a47-4bbf-8f62-2939544b3405/403578/badge.svg)](https://semaphoreci.com/perceptive/deployer)
 ## WARNING: THIS IS A WORK IN PROGRESS, no guarantee that it will work correctly, if at all at this moment.
 
-OpenAperture Deployer is a part of the OpenAperture ecosystem responsible for retrieving the
-source code of a target application, its pre-configuration and further deployment to
-the CoreOS cluster.
+OpenAperture Deployer is a part of the OpenAperture ecosystem responsible for actual
+deployment of containerazed applications to the CoreOS cluster.
 
 ## Communication with other components
-Deployer receives AMQP messages from Orchestrator to start the deployment routine.
+Deployer receives AMQP messages from OpenAperture Orchestrator (through an AMQP broker)
+to start the deployment routine.
 The AMQP message is getting aknowledged once the entire deployment is finished.
 Otherwise, the AMQP broker will re-schedule the deployment, so that it can be
 picked up again either by the same or a different Deployer worker.
 
-In addition to aknowledging the broker, Deployer sends out a message to the AMQP
-broker, reporting that the deployment has been successful. That message is then
-delivered to Orchestrator which tracks the entire workwlow process.
+In addition to aknowledging the message, Deployer sends out an AMQP message,
+reporting that the deployment has been successful. It's handled further by Orchestrator.
+Also, along the way, there are the progress notifications sent out, which are
+supposed to be further handled by OpenAperture Notifications server.
 
 ## Format of the AMQP message initiating deployment
+The following Map is expected as AMQP message payload:
 ```
 %{
   container_repo:     "target/repo_docker",
