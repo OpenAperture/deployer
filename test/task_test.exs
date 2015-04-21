@@ -7,13 +7,17 @@ defmodule OpenAperture.Deployer.Task.Test do
   alias Deployer.GitHub
   alias Deployer.Notifications
   alias Deployer.Task.Supervisor
+  alias OpenAperture.Messaging.AMQP.SubscriptionHandler
 
   setup do
     {:ok, sup} = Supervisor.start_link
     details    = %{
       source_commit_hash: "6441611f3ee2a3542b6b46ad7c82904d2cf24786",
-      container_repo: "Perceptive-Cloud/cloudos-ui_docker"
+      container_repo: "Perceptive-Cloud/cloudos-ui_docker",
+      delivery_tag: 314,
+      subscription_handler: fn -> end
     }
+
     {:ok, supervisor: sup, details: details}
   end
 
@@ -40,7 +44,7 @@ defmodule OpenAperture.Deployer.Task.Test do
 
   test "deploy() fails when no units are associated with the repo" do
     repo    = DeploymentRepo.create!(%{source_repo: "some_repo"})
-    details = %{deployment_repo: repo}
+    details = %{deployment_repo: repo, delivery_tag: 314, subscription_handler: fn -> end }
 
     [GitHub, File, Notifications] |> Enum.each(&:meck.new(&1, [:passthrough]))
 
@@ -48,7 +52,7 @@ defmodule OpenAperture.Deployer.Task.Test do
     :meck.expect(GitHub, :clone, fn(_) -> :ok end)
     :meck.expect(GitHub, :checkout, fn(_) -> :ok end)
     :meck.expect(File, :ls!, fn(_) -> {:one, :two} end)
-    :meck.expect(Notifications, :send, fn(_) -> :ok end)
+    :meck.expect(Notifications, :send_hipchat, fn(_) -> :ok end)
 
     assert Deployer.Task.deploy(details) ==
       {:error, "no hosts associated with the repo"}
@@ -57,11 +61,11 @@ defmodule OpenAperture.Deployer.Task.Test do
       [GitHub, File, Notifications] |> Enum.each(&:meck.unload(&1))
   end
 
-  test "deploy() under normal conditions" do
+  test "deploy() under normal conditions", %{details: details} do
     repo    = DeploymentRepo.create!(%{source_repo: "some_repo"})
-    details = %{deployment_repo: repo}
+    details = details |> Map.merge(%{deployment_repo: repo})
 
-    [GitHub, File, EtcdCluster, DeploymentRepo]
+    [GitHub, File, EtcdCluster, DeploymentRepo, SubscriptionHandler]
       |> Enum.each(&:meck.new(&1, [:passthrough]))
 
     :meck.expect(GitHub, :resolve_repo_url, fn(_) -> "http://dummy.url" end)
@@ -72,6 +76,7 @@ defmodule OpenAperture.Deployer.Task.Test do
     :meck.expect(EtcdCluster, :deploy_units, fn(_, _, _) -> :units end)
     :meck.expect(DeploymentRepo, :get_etcd_cluster, fn(_) -> :cluster end)
     :meck.expect(DeploymentRepo, :get_units, fn(_) -> [:one] end)
+    :meck.expect(SubscriptionHandler, :acknowledge, fn(_, _) -> :ok end)
 
     assert Deployer.Task.deploy(details) == :ok
   after
