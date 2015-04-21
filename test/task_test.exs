@@ -42,15 +42,12 @@ defmodule OpenAperture.Deployer.Task.Test do
     repo    = DeploymentRepo.create!(%{source_repo: "some_repo"})
     details = %{deployment_repo: repo}
 
-    :meck.new(GitHub, [:passthrough])
+    [GitHub, File, Notifications] |> Enum.each(&:meck.new(&1, [:passthrough]))
+
     :meck.expect(GitHub, :resolve_repo_url, fn(_) -> "http://dummy.url" end)
     :meck.expect(GitHub, :clone, fn(_) -> :ok end)
     :meck.expect(GitHub, :checkout, fn(_) -> :ok end)
-
-    :meck.new(File, [:passthrough])
     :meck.expect(File, :ls!, fn(_) -> {:one, :two} end)
-
-    :meck.new(Notifications)
     :meck.expect(Notifications, :send, fn(_) -> :ok end)
 
     assert Deployer.Task.deploy(details) ==
@@ -64,19 +61,15 @@ defmodule OpenAperture.Deployer.Task.Test do
     repo    = DeploymentRepo.create!(%{source_repo: "some_repo"})
     details = %{deployment_repo: repo}
 
-    :meck.new(GitHub, [:passthrough])
+    [GitHub, File, EtcdCluster, DeploymentRepo]
+      |> Enum.each(&:meck.new(&1, [:passthrough]))
+
     :meck.expect(GitHub, :resolve_repo_url, fn(_) -> "http://dummy.url" end)
     :meck.expect(GitHub, :clone, fn(_) -> :ok end)
     :meck.expect(GitHub, :checkout, fn(_) -> :ok end)
-
-    :meck.new(File, [:passthrough])
     :meck.expect(File, :ls!, fn(_) -> {:one, :two} end)
-
-    :meck.new(EtcdCluster, [:passthrough])
     :meck.expect(EtcdCluster, :get_host_count, fn(_) -> 314 end)
     :meck.expect(EtcdCluster, :deploy_units, fn(_, _, _) -> :units end)
-
-    :meck.new(DeploymentRepo, [:passthrough])
     :meck.expect(DeploymentRepo, :get_etcd_cluster, fn(_) -> :cluster end)
     :meck.expect(DeploymentRepo, :get_units, fn(_) -> [:one] end)
 
