@@ -33,6 +33,15 @@ defmodule OpenAperture.Deployer.Notifications do
     do_send("deploy", msg)
   end
 
+  @doc """
+  Wraps do_deploy to allow sending messages to queues with dinamic names.
+  Returns :ok or :erro
+  """
+  @spec send(String.t, term) :: :ok | :error
+  def send(queue, msg) do
+   do_send(queue, msg)
+  end
+
   @doc false
   @spec do_send(String.t, term) :: :ok | :error
   defp do_send(queue_name, msg) do
