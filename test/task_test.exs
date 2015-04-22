@@ -15,7 +15,9 @@ defmodule OpenAperture.Deployer.Task.Test do
       source_commit_hash: "6441611f3ee2a3542b6b46ad7c82904d2cf24786",
       container_repo: "Perceptive-Cloud/cloudos-ui_docker",
       delivery_tag: 314,
-      subscription_handler: fn -> end
+      subscription_handler: fn -> end,
+      reporting_queue: "orchestration",
+      workflow_id: 314
     }
 
     {:ok, supervisor: sup, details: details}
@@ -78,6 +80,7 @@ defmodule OpenAperture.Deployer.Task.Test do
     :meck.expect(DeploymentRepo, :get_units, fn(_) -> [:one] end)
     :meck.expect(SubscriptionHandler, :acknowledge, fn(_, _) -> :ok end)
     :meck.expect(Notifications, :send_hipchat, fn(_) -> :ok end)
+    :meck.expect(Notifications, :send, fn(_, _) -> :ok end)
 
     assert Deployer.Task.deploy(details) == :ok
   after
