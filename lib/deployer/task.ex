@@ -99,7 +99,7 @@ defmodule OpenAperture.Deployer.Task do
     {:error, "No valid units were retrieved from the repo"}
   end
 
-
+  @spec report_success(Map) :: :ok | :error
   defp do_deploy(cluster, requested_instance_cnt, new_units, details) do
     if details[:min_instance_cnt] && details[:min_instance_cnt] > requested_instance_cnt do
       requested_instance_cnt = details[:min_instance_cnt]
@@ -127,30 +127,50 @@ defmodule OpenAperture.Deployer.Task do
     # Workflow.publish_success_notification(_workflow, "Preparing to deploy #{new_units_cnt} units onto #{host_cnt} hosts...")
     # deployed_units = EtcdCluster.deploy_units(cluster, new_units, available_ports)
 
+    if EtcdCluster.deploy_units(cluster, new_units, available_ports) do
+      report_success(details)
+    else
+      report_failure(details)
+    end
+
+    # ensure_router_configuration(details, cluster, deployed_units)
+  end
+
+  @doc false
+  @spec report_success(Map) :: :ok | :error
+  defp report_success(details) do
     %{
       delivery_tag: delivery_tag,
       subscription_handler: subscription_handler
     } = details
 
-    if EtcdCluster.deploy_units(cluster, new_units, available_ports) do
-      Notifications.send_hipchat(%{
-        prefix: details.deployment_repo |> DeploymentRepo.get_repo_name,
-        message: "Deployment completed",
-        is_success: true
-      })
-      SubscriptionHandler.acknowledge(subscription_handler, delivery_tag)
-      :ok
-    else
-      Notifications.send_hipchat(%{
-        prefix: details.deployment_repo |> DeploymentRepo.get_repo_name,
-        message: "Deployment failed",
-        is_success: false
-      })
-      SubscriptionHandler.reject(subscription_handler, delivery_tag)
-      {:error, "No units deployed"}
-    end
+    Notifications.send_hipchat(%{
+      prefix: details.deployment_repo |> DeploymentRepo.get_repo_name,
+      message: "Deployment completed",
+      is_success: true
+    })
+    SubscriptionHandler.acknowledge(subscription_handler, delivery_tag)
+    Notifications.send(details.reporting_queue, %{
+      workflow_id: details.workflow_id,
+      message: "deployment completed",
+      is_success: true
+    })
+  end
 
-    # ensure_router_configuration(details, cluster, deployed_units)
+  @spec report_failure(Map) :: :ok | :error
+  defp report_failure(details) do
+    %{
+      delivery_tag: delivery_tag,
+      subscription_handler: subscription_handler
+    } = details
+
+    Notifications.send_hipchat(%{
+      prefix: details.deployment_repo |> DeploymentRepo.get_repo_name,
+      message: "Deployment failed",
+      is_success: false
+    })
+    SubscriptionHandler.reject(subscription_handler, delivery_tag)
+    {:error, "No units deployed"}
   end
 
   defp ensure_router_configuration(details, cluster, units) do
