@@ -18,16 +18,16 @@ reporting that the deployment has been successful. It's handled further by Orche
 Also, along the way, there are the progress notifications sent out, which are
 supposed to be further handled by OpenAperture Notifications server.
 
-## Format of the AMQP message initiating deployment
+## Configuration
+
+## Format of the AMQP message initiating a deployment
 The following Map is expected as AMQP message payload:
 ```
 %{
   container_repo:     "target/repo_docker",
-  source_commit_hash:  "afdjasdfoiu20493u234i2ok3n4l234",
-  workflow_id:         123901823
-  project_name:        "target_app",
-  product:             "target_product",
-  product_environment: "target_environment",
-  source_repo:         "target/repo"                       # optional
+  source_commit_hash: "afdjasdfoiu20493u234i2ok3n4l234",
+  workflow_id:        123901823,
+  project_name:       "target_app",
+  reporting_queue:    "orchestrator"
 }
 ```
