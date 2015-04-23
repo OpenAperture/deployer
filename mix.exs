@@ -16,7 +16,8 @@ defmodule OpenAperture.Deployer.Mixfile do
         :fleet_api,
         :openaperture_messaging, 
         :openaperture_manager_api, 
-        :openaperture_overseer_api
+        :openaperture_overseer_api,
+        :openaperture_workflow_orchestrator_api
       ],
       mod: {OpenAperture.Deployer, []}
     ]

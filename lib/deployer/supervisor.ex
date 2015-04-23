@@ -11,6 +11,7 @@ defmodule OpenAperture.Deployer.Supervisor do
   def init(:ok) do
     children = [
       worker(OpenAperture.Deployer.Dispatcher, [[name: DeployDispatcher]]),
+      worker(OpenAperture.Deployer.MessageManager, []),
       supervisor(OpenAperture.Deployer.Milestones.DeploySupervisor, [[name: DeploySupervisor]]),
       supervisor(OpenAperture.Deployer.Milestones.MonitorSupervisor, [[name: MonitorSupervisor]])
     ]

@@ -50,6 +50,7 @@ defmodule OpenAperture.Deployer.Dispatcher do
   Returns `:ok` or fails with an exception.
   """
   def spawn_deployment_task(payload, _meta, async_info) do
+    MessageManager.track(async_info)
     DeploySupervisor.deploy(DeployRequest.from_payload(payload, async_info))
   end
 
