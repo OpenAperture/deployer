@@ -10,15 +10,15 @@ defmodule OpenAperture.Deployer.Dispatcher do
   use   OpenAperture.Messaging
   use   Timex
 
-  alias OpenAperture.Deployer
-  alias Deployer.Configuration
-  alias Deployer.Task
+  alias OpenAperture.Deployer.Configuration
 
   alias OpenAperture.ManagerApi
 
-  alias OpenAperture.Messaging
-  alias Messaging.AMQP.QueueBuilder
-  alias Messaging.ConnectionOptionsResolver
+  alias OpenAperture.Messaging.AMQP.QueueBuilder
+  alias OpenAperture.Messaging.ConnectionOptionsResolver
+
+  alias OpenAperture.Deployer.Request, as: DeployRequest
+  alias OpenAperture.Deployer.Milestones.DeploySupervisor
 
   import Supervisor.Spec
   import OpenAperture.Messaging.AMQP.SubscriptionHandler, only: [acknowledge: 2]
@@ -39,35 +39,30 @@ defmodule OpenAperture.Deployer.Dispatcher do
   Returns `{:ok, %{}}` or throws an exception if subscription was unsuccessful.
   """
   def init(:ok) do
-    subscribe_for_queue("deploy", &spawn_deployment_task/3)
-    {:ok, %{}}
+    case subscribe_for_queue("deployer", &spawn_deployment_task/3) do
+      {:ok, _} -> {:ok, %{}}
+      {:error, reason} -> {:error, reason}
+    end    
   end
 
   @doc """
   Spawns a new supervised deployment task.
   Returns `:ok` or fails with an exception.
   """
-  def spawn_deployment_task(details, _meta, async_info) do
-    %{subscription_handler: subscription_handler,
-      delivery_tag:         delivery_tag} = async_info
-
-    handler = %{subscription_handler: async_info.subscription_handler}
-    details = details |> Map.merge(handler)
-
-    Task.Supervisor.execute_task(TaskSupervisor, details)
+  def spawn_deployment_task(payload, _meta, async_info) do
+    DeploySupervisor.deploy(DeployRequest.from_payload(payload, async_info))
   end
 
   @doc false
   @spec subscribe_for_queue(String.t, Fun) :: :ok | {:error, String.t}
   defp subscribe_for_queue(name, handler) do
     if Mix.env == :test do
-      :ok
+      {:ok, nil}
     else
-      api      = ManagerApi.create!(Configuration.api_creds)
-      exchange = Configuration.current_exchange_id
-      broker   = Configuration.current_broker_id
-      queue    = QueueBuilder.build(api, name, exchange)
-      options  = ConnectionOptionsResolver.get_for_broker(api, broker)
+      exchange = Configuration.get_current_exchange_id
+      broker   = Configuration.get_current_broker_id
+      queue    = QueueBuilder.build(ManagerApi.get_api, name, exchange)
+      options  = ConnectionOptionsResolver.get_for_broker(ManagerApi.get_api, broker)
       subscribe(options, queue, handler)
     end
   end

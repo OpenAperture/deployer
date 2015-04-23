@@ -1,19 +1,20 @@
-defmodule OpenAperture.Deployer.Task.Supervisor do
+defmodule OpenAperture.Deployer.Milestones.DeploySupervisor do
   require Logger
   use     Supervisor
-  alias   OpenAperture.Deployer
 
   def start_link(opts \\ []) do
     Logger.debug("Starting #{__MODULE__}...")
     Supervisor.start_link(__MODULE__, :ok, opts)
   end
 
-  def execute_task(supervisor, details) do
-    Supervisor.start_child(supervisor, [details])
+  def deploy(deploy_request) do
+    Supervisor.start_child(DeploySupervisor, [deploy_request])
   end
 
   def init(:ok) do
-    children = [worker(Deployer.Task, [])]
+    children = [
+      worker(OpenAperture.Deployer.Milestones.Deploy, [])
+    ]
     supervise(children, strategy: :simple_one_for_one)
   end
 end

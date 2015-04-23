@@ -9,9 +9,11 @@ config :openaperture_manager_api,
   oauth_client_id:     System.get_env("OAUTH_CLIENT_ID")     || "id",
   oauth_client_secret: System.get_env("OAUTH_CLIENT_SECRET") || "secret"
 
-config :notifications,
-  exchange_id: "2",
-  broker_id:   "3"
-
 config :logger, :console,
   level: :debug
+
+config :openaperture_overseer_api,
+	module_type: :test,
+	autostart: false,	
+	exchange_id: "1",
+	broker_id: "1"
