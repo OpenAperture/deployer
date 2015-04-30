@@ -2,6 +2,8 @@ defmodule OpenAperture.Deployer.Request do
 
   alias OpenAperture.WorkflowOrchestratorApi.Workflow
   alias OpenAperture.Messaging.AMQP.SubscriptionHandler
+
+  alias OpenAperture.Deployer.MessageManager
   
 	@moduledoc """
 	Methods and Request struct for Deployer requests

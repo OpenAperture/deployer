@@ -41,7 +41,7 @@ defmodule OpenAperture.Deployer.Milestones.MonitorTest do
     :meck.unload(SystemdUnit)
   end
 
-  test "verify_unit_status - loaded and active" do
+  test "verify_unit_status - loaded and active 2" do
     :meck.new(SystemdUnit, [:passthrough])
     :meck.expect(SystemdUnit, :set_etcd_token, fn _,_ -> :ok end)
     :meck.expect(SystemdUnit, :refresh, fn _ -> :ok end)

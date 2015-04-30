@@ -19,6 +19,7 @@ defmodule OpenAperture.Deployer.Dispatcher do
 
   alias OpenAperture.Deployer.Request, as: DeployRequest
   alias OpenAperture.Deployer.Milestones.DeploySupervisor
+  alias OpenAperture.Deployer.MessageManager
 
   import Supervisor.Spec
   import OpenAperture.Messaging.AMQP.SubscriptionHandler, only: [acknowledge: 2]
