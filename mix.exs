@@ -14,6 +14,7 @@ defmodule OpenAperture.Deployer.Mixfile do
         :logger,
         :amqp,
         :fleet_api,
+        :openaperture_fleet,
         :openaperture_messaging, 
         :openaperture_manager_api, 
         :openaperture_overseer_api,
