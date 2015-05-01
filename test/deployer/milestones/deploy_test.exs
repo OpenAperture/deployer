@@ -12,7 +12,6 @@ defmodule OpenAperture.Deployer.Milestones.DeployTest do
 
   test "deploy - no accessible hosts" do
     :meck.new(EtcdCluster, [:passthrough])
-    :meck.expect(EtcdCluster, :create, fn _ -> {:ok, %{}} end)
     :meck.expect(EtcdCluster, :get_host_count, fn _ -> 0 end)
 
     deployer_request = %DeployerRequest{
@@ -31,7 +30,6 @@ defmodule OpenAperture.Deployer.Milestones.DeployTest do
 
   test "deploy - no deployable_units" do
     :meck.new(EtcdCluster, [:passthrough])
-    :meck.expect(EtcdCluster, :create, fn _ -> {:ok, %{}} end)
     :meck.expect(EtcdCluster, :get_host_count, fn _ -> 3 end)
 
     deployer_request = %DeployerRequest{
@@ -51,7 +49,6 @@ defmodule OpenAperture.Deployer.Milestones.DeployTest do
 
   test "deploy - success" do
     :meck.new(EtcdCluster, [:passthrough])
-    :meck.expect(EtcdCluster, :create, fn _ -> {:ok, %{}} end)
     :meck.expect(EtcdCluster, :get_host_count, fn _ -> 3 end)
     :meck.expect(EtcdCluster, :deploy_units, fn _,_,_ -> [] end)
     
