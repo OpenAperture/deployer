@@ -16,7 +16,21 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
   @spec start_link(Map) :: {:ok, pid} | {:error, String.t}
   def start_link(deploy_request) do
     Logger.debug("Starting a new Deployment task for Workflow #{deploy_request.workflow.id}...")
-    Task.start_link(fn -> Deploy.deploy(deploy_request) end)
+    Task.start_link(fn -> 
+      try do
+        Deploy.deploy(deploy_request) 
+      catch
+        :exit, code   -> 
+          Logger.error("Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Exited with code #{inspect code}")
+          SubscriptionHandler.acknowledge(deploy_request.subscription_handler, deploy_request.delivery_tag)
+        :throw, value -> 
+          Logger.error("Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Throw called with #{inspect value}")
+          SubscriptionHandler.acknowledge(deploy_request.subscription_handler, deploy_request.delivery_tag)
+        what, value   -> 
+          Logger.error("Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Caught #{inspect what} with #{inspect value}")
+          SubscriptionHandler.acknowledge(deploy_request.subscription_handler, deploy_request.delivery_tag)
+      end
+    end)
   end
 
   @doc """
