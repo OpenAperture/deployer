@@ -18,7 +18,9 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
     Logger.debug("[Milestones.Deploy] Starting a new Deployment task for Workflow #{deploy_request.workflow.id}...")
     Task.start_link(fn -> 
       try do
-        Deploy.deploy(deploy_request) 
+        successful_deploy_request = Deploy.deploy(deploy_request)
+        Logger.debug("[Milestones.Deploy] Successfully completed the Deployment task for Workflow #{deploy_request.workflow.id}, requesting monitoring...")
+        MonitorSupervisor.monitor(successful_deploy_request)
       catch
         :exit, code   -> 
           Logger.error("[Milestones.Deploy] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Exited with code #{inspect code}")
@@ -63,8 +65,6 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
     Logger.debug("[Milestones.Deploy] Deploying units...")
     deploy_request = DeployerRequest.publish_success_notification(deploy_request, "Preparing to deploy #{length(deploy_request.deployable_units)} units onto #{requested_instance_cnt} hosts...")
 
-    deploy_request = %{deploy_request | deployed_units: EtcdCluster.deploy_units(deploy_request.etcd_token, deploy_request.deployable_units, map_available_ports)}
-    MonitorSupervisor.monitor(deploy_request)
-    deploy_request
+    %{deploy_request | deployed_units: EtcdCluster.deploy_units(deploy_request.etcd_token, deploy_request.deployable_units, map_available_ports)}
   end
 end
