@@ -32,7 +32,7 @@ defmodule OpenAperture.Deployer.Mixfile do
       {:openaperture_messaging, git: "https://github.com/OpenAperture/messaging.git", ref: "dc50470d0f0026718913535c901aee1562868dbf", override: true},
       {:openaperture_manager_api, git: "https://github.com/OpenAperture/manager_api.git", ref: "ae629a4127acceac8a9791c85e5a0d3b67d1ad16", override: true},
       {:openaperture_overseer_api, git: "https://github.com/OpenAperture/overseer_api.git", ref: "4d65d2295f2730bc74ec695c32fa0d2478158182", override: true},
-      {:openaperture_fleet, git: "https://github.com/OpenAperture/fleet.git", ref: "68be7094ec05d949d34c9940fd85860d2746a039", override: true},
+      {:openaperture_fleet, git: "https://github.com/OpenAperture/fleet.git", ref: "da70f24a3bbde99256e317462f6784af9f2c99d5", override: true},
       {:openaperture_workflow_orchestrator_api, git: "https://github.com/OpenAperture/workflow_orchestrator_api.git", ref: "d91664c4c6b21f889cba40a623c8893f043f59c8", override: true},
       {:timex, "~> 0.12.9"},
       {:fleet_api, "~> 0.0.4"},

@@ -15,20 +15,20 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
   """
   @spec start_link(Map) :: {:ok, pid} | {:error, String.t}
   def start_link(deploy_request) do
-    Logger.debug("Starting a new Deployment task for Workflow #{deploy_request.workflow.id}...")
+    Logger.debug("[Milestones.Deploy] Starting a new Deployment task for Workflow #{deploy_request.workflow.id}...")
     Task.start_link(fn -> 
       try do
         Deploy.deploy(deploy_request) 
       catch
         :exit, code   -> 
-          Logger.error("Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Exited with code #{inspect code}")
-          SubscriptionHandler.acknowledge(deploy_request.subscription_handler, deploy_request.delivery_tag)
+          Logger.error("[Milestones.Deploy] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Exited with code #{inspect code}")
+          DeployerRequest.acknowledge(deploy_request)
         :throw, value -> 
-          Logger.error("Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Throw called with #{inspect value}")
-          SubscriptionHandler.acknowledge(deploy_request.subscription_handler, deploy_request.delivery_tag)
+          Logger.error("[Milestones.Deploy] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Throw called with #{inspect value}")
+          DeployerRequest.acknowledge(deploy_request)
         what, value   -> 
-          Logger.error("Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Caught #{inspect what} with #{inspect value}")
-          SubscriptionHandler.acknowledge(deploy_request.subscription_handler, deploy_request.delivery_tag)
+          Logger.error("[Milestones.Deploy] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Caught #{inspect what} with #{inspect value}")
+          DeployerRequest.acknowledge(deploy_request)
       end
     end)
   end
@@ -38,10 +38,10 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
   """
   @spec deploy(DeployerRequest) :: DeployerRequest
   def deploy(deploy_request) do
-    Logger.info("Beginning Fleet deployment...")
+    Logger.info("[Milestones.Deploy] Beginning Fleet deployment...")
     host_cnt = EtcdCluster.get_host_count(deploy_request.etcd_token)
 
-    Logger.debug("Reviewing units...")
+    Logger.debug("[Milestones.Deploy] Reviewing units...")
     cond do
       host_cnt == 0 -> DeployerRequest.step_failed(deploy_request, "Deployment failed!", "Unable to find accessible hosts in cluster #{deploy_request.etcd_token}!")
       deploy_request.deployable_units == nil || length(deploy_request.deployable_units) == 0 -> DeployerRequest.step_failed(deploy_request.deployable_units, "Deployment failed!", "There are no valid units to deploy!")
@@ -55,12 +55,12 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
     #  requested_instance_cnt = details[:min_instance_cnt]
     #end
 
-    Logger.debug("Allocating #{requested_instance_cnt} ports on the cluster...");
+    Logger.debug("[Milestones.Deploy] Allocating #{requested_instance_cnt} ports on the cluster...");
 
-    Logger.debug("Allocating ports bogus 0-ports on the cluster...")
+    Logger.debug("[Milestones.Deploy] Allocating ports bogus 0-ports on the cluster...")
     map_available_ports = nil
 
-    Logger.debug("Deploying units...")
+    Logger.debug("[Milestones.Deploy] Deploying units...")
     deploy_request = DeployerRequest.publish_success_notification(deploy_request, "Preparing to deploy #{length(deploy_request.deployable_units)} units onto #{requested_instance_cnt} hosts...")
 
     deploy_request = %{deploy_request | deployed_units: EtcdCluster.deploy_units(deploy_request.etcd_token, deploy_request.deployable_units, map_available_ports)}

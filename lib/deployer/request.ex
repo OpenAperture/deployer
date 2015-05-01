@@ -80,8 +80,7 @@ defmodule OpenAperture.Deployer.Request do
   """
   @spec publish_success_notification(OpenAperture.Deployer.Request.t, String.t()) :: OpenAperture.Deployer.Request.t
   def step_failed(deploy_request, message, reason) do
-    MessageManager.remove(deploy_request.delivery_tag)
-    SubscriptionHandler.acknowledge(deploy_request.subscription_handler, deploy_request.delivery_tag)
+    acknowledge(deploy_request)
     orchestrator_request = Workflow.step_failed(deploy_request.orchestrator_request, message, reason)
     %{deploy_request | orchestrator_request: orchestrator_request, workflow: orchestrator_request.workflow}
   end
@@ -99,9 +98,21 @@ defmodule OpenAperture.Deployer.Request do
   """
   @spec step_completed(OpenAperture.Deployer.Request.t) :: OpenAperture.Deployer.Request.t
   def step_completed(deploy_request) do
-    MessageManager.remove(deploy_request.delivery_tag)
-    SubscriptionHandler.acknowledge(deploy_request.subscription_handler, deploy_request.delivery_tag)
+    acknowledge(deploy_request)
     orchestrator_request = Workflow.step_completed(deploy_request.orchestrator_request)
     %{deploy_request | orchestrator_request: orchestrator_request, workflow: orchestrator_request.workflow}
-  end  
+  end
+
+  @doc """
+  Convenience wrapper to acknowledge messages
+
+  ## Options
+
+  The `request` option defines the Request
+  """
+  @spec acknowledge(OpenAperture.Deployer.Request.t) :: term
+  def acknowledge(deploy_request) do
+    MessageManager.remove(deploy_request.delivery_tag)
+    SubscriptionHandler.acknowledge(deploy_request.subscription_handler, deploy_request.delivery_tag)    
+  end
 end

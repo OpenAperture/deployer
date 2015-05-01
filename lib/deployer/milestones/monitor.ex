@@ -14,20 +14,20 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
   """
   @spec start_link(Map) :: {:ok, pid} | {:error, String.t}
   def start_link(deploy_request) do
-    Logger.debug("Starting a new Deployment Monitoring task for Workflow #{deploy_request.workflow.id}...")
+    Logger.debug("[Milestones.Monitor] Starting a new Deployment Monitoring task for Workflow #{deploy_request.workflow.id}...")
     Task.start_link(fn -> 
       try do
         Monitor.monitor(deploy_request, 0) 
       catch
         :exit, code   -> 
-          Logger.error("Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Exited with code #{inspect code}")
-          SubscriptionHandler.acknowledge(deploy_request.subscription_handler, deploy_request.delivery_tag)
+          Logger.error("[Milestones.Monitor] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Exited with code #{inspect code}")
+          DeployerRequest.acknowledge(deploy_request)
         :throw, value -> 
-          Logger.error("Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Throw called with #{inspect value}")
-          SubscriptionHandler.acknowledge(deploy_request.subscription_handler, deploy_request.delivery_tag)
+          Logger.error("[Milestones.Monitor] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Throw called with #{inspect value}")
+          DeployerRequest.acknowledge(deploy_request)
         what, value   -> 
-          Logger.error("Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Caught #{inspect what} with #{inspect value}")
-          SubscriptionHandler.acknowledge(deploy_request.subscription_handler, deploy_request.delivery_tag)
+          Logger.error("[Milestones.Monitor] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Caught #{inspect what} with #{inspect value}")
+          DeployerRequest.acknowledge(deploy_request)
       end
     end)
   end
@@ -47,7 +47,7 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
     num_requested_monitoring_units = if deploy_request.deployed_units, do: length(deploy_request.deployed_units), else: 0
 
     if num_requested_monitoring_units > 0 do
-      Logger.debug("Monitoring the deployment of #{num_requested_monitoring_units} units on cluster #{etcd_token}...")
+      Logger.debug("[Milestones.Monitor] Monitoring the deployment of #{num_requested_monitoring_units} units on cluster #{etcd_token}...")
 
       refrshed_units = refresh_systemd_units(deploy_request.etcd_token, deploy_request.deployed_units)
       units_to_monitor = OpenAperture.Deployer.Milestones.Monitor.verify_unit_status(refrshed_units, deploy_request.etcd_token, [])
@@ -140,30 +140,30 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
   @spec verify_unit_status(List, String.t(), List) :: Map
   def verify_unit_status([current_unit| remaining_units], etcd_token, units_to_monitor) do    
     case SystemdUnit.is_launched?(current_unit) do
-      true -> Logger.debug("Requested service #{current_unit.name} on cluster #{etcd_token} has been launched")
+      true -> Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} has been launched")
       {false, "loaded"} -> 
-        Logger.debug("Requested service #{current_unit.name} on cluster #{etcd_token} has been loaded and is being launched...")
+        Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} has been loaded and is being launched...")
       {false, "inactive"} -> 
-        Logger.debug("Requested service #{current_unit.name} on cluster #{etcd_token} has been loaded (but not started), and is being launched...")
+        Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} has been loaded (but not started), and is being launched...")
       {false, current_launch_state} -> 
-        Logger.error("Requested service #{current_unit.name} on cluster #{etcd_token} is in an incorrect state:  #{current_launch_state}")
+        Logger.error("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} is in an incorrect state:  #{current_launch_state}")
     end
 
     case SystemdUnit.is_active?(current_unit) do
-      true -> Logger.debug("Requested service #{current_unit.name} on cluster #{etcd_token} is active")
+      true -> Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} is active")
       {false, "activating", _, _} -> 
-        Logger.debug("Requested service #{current_unit.name} on cluster #{etcd_token} is starting up...")
+        Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} is starting up...")
         units_to_monitor = units_to_monitor ++ [current_unit]
       {false, nil, _, _} -> 
-        Logger.debug("Requested service #{current_unit.name} on cluster #{etcd_token} has not registered a status yet...")
+        Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} has not registered a status yet...")
         units_to_monitor = units_to_monitor ++ [current_unit]
       {false, active_state, load_state, sub_state} -> 
-        Logger.error("Requested service #{current_unit.name} on cluster #{etcd_token} is #{active_state}; load state:  #{load_state}, sub state:  #{sub_state}!")
+        Logger.error("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} is #{active_state}; load state:  #{load_state}, sub state:  #{sub_state}!")
         case SystemdUnit.get_journal(current_unit) do
           {:ok, stdout, stderr} ->
-            Logger.error("Fleet Journal:\n#{stdout}\n\n#{stderr}")
+            Logger.error("[Milestones.Monitor] Fleet Journal:\n#{stdout}\n\n#{stderr}")
           {:error, stdout, stderr} ->
-            Logger.error("Logs were unable to be retrieved:\n#{stdout}\n\n#{stderr}")
+            Logger.error("[Milestones.Monitor] Logs were unable to be retrieved:\n#{stdout}\n\n#{stderr}")
         end
     end
 
