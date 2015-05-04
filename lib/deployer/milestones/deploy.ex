@@ -22,7 +22,7 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
         successful_deploy_request = Deploy.deploy(deploy_request)
         Logger.debug("[Milestones.Deploy] Successfully completed the Deployment task for Workflow #{deploy_request.workflow.id}, requesting monitoring...")
         #MonitorSupervisor.monitor(successful_deploy_request)
-        Monitor.start_link(deploy_request)
+        Monitor.start_link(successful_deploy_request)
       catch
         :exit, code   -> 
           Logger.error("[Milestones.Deploy] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Exited with code #{inspect code}")
