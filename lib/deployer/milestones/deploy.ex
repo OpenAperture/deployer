@@ -20,8 +20,9 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
     Task.start_link(fn -> 
       try do
         successful_deploy_request = Deploy.deploy(deploy_request)
+
+        successful_deploy_request = DeployerRequest.publish_success_notification(successful_deploy_request, "The units has been deployed, starting deployment monitor...")
         Logger.debug("[Milestones.Deploy] Successfully completed the Deployment task for Workflow #{deploy_request.workflow.id}, requesting monitoring...")
-        #MonitorSupervisor.monitor(successful_deploy_request)
         Monitor.start_link(successful_deploy_request)
       catch
         :exit, code   -> 
@@ -55,17 +56,11 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
 
   @spec do_deploy(DeployerRequest, term) :: DeployerRequest
   defp do_deploy(deploy_request, requested_instance_cnt) do
-    #if details[:min_instance_cnt] && details[:min_instance_cnt] > requested_instance_cnt do
-    #  requested_instance_cnt = details[:min_instance_cnt]
-    #end
-
     Logger.debug("[Milestones.Deploy] Allocating #{requested_instance_cnt} ports on the cluster...");
-
-    Logger.debug("[Milestones.Deploy] Allocating ports bogus 0-ports on the cluster...")
     map_available_ports = nil
 
     Logger.debug("[Milestones.Deploy] Deploying units...")
-    deploy_request = DeployerRequest.publish_success_notification(deploy_request, "Preparing to deploy #{length(deploy_request.deployable_units)} units onto #{requested_instance_cnt} hosts...")
+    deploy_request = DeployerRequest.publish_success_notification(deploy_request, "Preparing to deploy #{length(deploy_request.deployable_units)} unit(s) onto #{requested_instance_cnt} host(s)...")
 
     %{deploy_request | deployed_units: EtcdCluster.deploy_units(deploy_request.etcd_token, deploy_request.deployable_units, map_available_ports)}
   end

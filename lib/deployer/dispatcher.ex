@@ -53,7 +53,6 @@ defmodule OpenAperture.Deployer.Dispatcher do
   """
   def spawn_deployment_task(payload, _meta, async_info) do
     MessageManager.track(async_info)
-    #DeploySupervisor.deploy(DeployRequest.from_payload(payload, async_info))
     Deploy.start_link(DeployRequest.from_payload(payload, async_info))
   end
 

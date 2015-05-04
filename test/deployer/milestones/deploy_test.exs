@@ -2,7 +2,6 @@ defmodule OpenAperture.Deployer.Milestones.DeployTest do
   use   ExUnit.Case
 
   alias OpenAperture.Deployer.Milestones.Deploy
-  alias OpenAperture.Deployer.Milestones.MonitorSupervisor
   alias OpenAperture.Deployer.Request, as: DeployerRequest
 
   alias OpenAperture.Fleet.EtcdCluster
@@ -60,14 +59,10 @@ defmodule OpenAperture.Deployer.Milestones.DeployTest do
     :meck.new(DeployerRequest, [:passthrough])
     :meck.expect(DeployerRequest, :publish_success_notification, fn _,_ -> deployer_request end)
 
-    :meck.new(MonitorSupervisor, [:passthrough])
-    :meck.expect(MonitorSupervisor, :monitor, fn _ -> :ok end)
-
     returned_request = Deploy.deploy(deployer_request)
     assert returned_request != nil
   after
     :meck.unload(EtcdCluster)
     :meck.unload(DeployerRequest)
-    :meck.unload(MonitorSupervisor)
   end    
 end
