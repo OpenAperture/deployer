@@ -1,3 +1,5 @@
+require Logger
+
 defmodule OpenAperture.Deployer.Request do
 
   alias OpenAperture.WorkflowOrchestratorApi.Workflow
@@ -112,7 +114,16 @@ defmodule OpenAperture.Deployer.Request do
   """
   @spec acknowledge(OpenAperture.Deployer.Request.t) :: term
   def acknowledge(deploy_request) do
-    MessageManager.remove(deploy_request.delivery_tag)
-    SubscriptionHandler.acknowledge(deploy_request.subscription_handler, deploy_request.delivery_tag)    
+    try do
+      message = MessageManager.remove(deploy_request.delivery_tag)
+      SubscriptionHandler.acknowledge(message[:subscription_handler], message[:delivery_tag])
+    catch
+      :exit, code   -> 
+        Logger.error("[DeployerRequest] Failed to acknowledge message #{deploy_request.delivery_tag} - Exited with code #{inspect code}")
+      :throw, value -> 
+        Logger.error("[DeployerRequest] Failed to acknowledge message #{deploy_request.delivery_tag} - Throw called with #{inspect value}")
+      what, value   -> 
+        Logger.error("[DeployerRequest] Failed to acknowledge message #{deploy_request.delivery_tag} - Caught #{inspect what} with #{inspect value}")
+    end      
   end
 end

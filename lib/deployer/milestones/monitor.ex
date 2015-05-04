@@ -48,8 +48,11 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
 
     if num_requested_monitoring_units > 0 do
       Logger.debug("[Milestones.Monitor] Monitoring the deployment of #{num_requested_monitoring_units} units on cluster #{etcd_token}...")
+      Logger.debug("num_requested_monitoring_units:  #{inspect num_requested_monitoring_units}")
 
       refrshed_units = refresh_systemd_units(deploy_request.etcd_token, deploy_request.deployed_units)
+      Logger.debug("refrshed_units:  #{inspect refrshed_units}")
+      
       units_to_monitor = OpenAperture.Deployer.Milestones.Monitor.verify_unit_status(refrshed_units, deploy_request.etcd_token, [])
       units_to_monitor_cnt = length(units_to_monitor)
 
