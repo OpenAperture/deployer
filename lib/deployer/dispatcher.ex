@@ -19,6 +19,7 @@ defmodule OpenAperture.Deployer.Dispatcher do
 
   alias OpenAperture.Deployer.Request, as: DeployRequest
   alias OpenAperture.Deployer.Milestones.DeploySupervisor
+  alias OpenAperture.Deployer.Milestones.Deploy
   alias OpenAperture.Deployer.MessageManager
 
   import Supervisor.Spec
@@ -52,7 +53,8 @@ defmodule OpenAperture.Deployer.Dispatcher do
   """
   def spawn_deployment_task(payload, _meta, async_info) do
     MessageManager.track(async_info)
-    DeploySupervisor.deploy(DeployRequest.from_payload(payload, async_info))
+    #DeploySupervisor.deploy(DeployRequest.from_payload(payload, async_info))
+    Deploy.start_link(DeployRequest.from_payload(payload, async_info))
   end
 
   @doc false
