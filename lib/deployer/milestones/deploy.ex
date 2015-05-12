@@ -27,13 +27,13 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
       catch
         :exit, code   -> 
           Logger.error("[Milestones.Deploy] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Exited with code #{inspect code}")
-          DeployerRequest.acknowledge(deploy_request)
+          DeployerRequest.step_failed(deploy_request, "An unexpected error occurred executing deploy request", "Exited with code #{inspect code}")
         :throw, value -> 
           Logger.error("[Milestones.Deploy] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Throw called with #{inspect value}")
-          DeployerRequest.acknowledge(deploy_request)
+          DeployerRequest.step_failed(deploy_request, "An unexpected error occurred executing deploy request", "Throw called with #{inspect value}")
         what, value   -> 
           Logger.error("[Milestones.Deploy] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Caught #{inspect what} with #{inspect value}")
-          DeployerRequest.acknowledge(deploy_request)
+          DeployerRequest.step_failed(deploy_request, "An unexpected error occurred executing deploy request", "Caught #{inspect what} with #{inspect value}")
       end
     end)
   end

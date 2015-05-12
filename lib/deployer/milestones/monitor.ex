@@ -21,13 +21,13 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
       catch
         :exit, code   -> 
           Logger.error("[Milestones.Monitor] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Exited with code #{inspect code}")
-          DeployerRequest.acknowledge(deploy_request)
+          DeployerRequest.step_failed(deploy_request, "An unexpected error occurred executing deploy (monitor) request", "Exited with code #{inspect code}")
         :throw, value -> 
           Logger.error("[Milestones.Monitor] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Throw called with #{inspect value}")
-          DeployerRequest.acknowledge(deploy_request)
+          DeployerRequest.step_failed(deploy_request, "An unexpected error occurred executing deploy (monitor) request", "Throw called with #{inspect value}")
         what, value   -> 
           Logger.error("[Milestones.Monitor] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Caught #{inspect what} with #{inspect value}")
-          DeployerRequest.acknowledge(deploy_request)
+          DeployerRequest.step_failed(deploy_request, "An unexpected error occurred executing deploy (monitor) request", "Caught #{inspect what} with #{inspect value}")
       end
     end)
   end
@@ -165,6 +165,8 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
             Logger.error("[Milestones.Monitor] Fleet Journal:\n#{stdout}\n\n#{stderr}")
           {:error, stdout, stderr} ->
             Logger.error("[Milestones.Monitor] Logs were unable to be retrieved:\n#{stdout}\n\n#{stderr}")
+          other ->
+            Logger.error("[Milestones.Monitor] Logs returned an unknown format:\n#{inspect other}")
         end
     end
 
