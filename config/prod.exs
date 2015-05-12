@@ -13,3 +13,7 @@ config :openaperture_overseer_api,
 	module_type: :deployer,
 	exchange_id: System.get_env("EXCHANGE_ID"),
 	broker_id: System.get_env("BROKER_ID")
+
+config :fleet_api, :etcd,
+  fix_port_number: true,
+  api_port: 7002	
