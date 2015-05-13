@@ -46,26 +46,26 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
 
     num_requested_monitoring_units = if deploy_request.deployed_units, do: length(deploy_request.deployed_units), else: 0
     Logger.debug("[Milestones.Monitor] Monitoring the deployment of #{num_requested_monitoring_units} units on cluster #{deploy_request.etcd_token}...")
-    {monitoring_result, deploy_request, units_to_monitor, completed_units, failed_units} = monitor_remaining_units(deploy_request, monitoring_loop_cnt, deploy_request.deployed_units, [], [])
+    {monitoring_result, updated_deploy_request, units_to_monitor, completed_units, failed_units} = monitor_remaining_units(deploy_request, monitoring_loop_cnt, deploy_request.deployed_units, [], [])
 
-    deploy_request = if length(failed_units) > 0 do
-      Enum.reduce failed_units, deploy_request, fn failed_unit, deploy_request ->
+    updated_deploy_request = if length(failed_units) > 0 do
+      Enum.reduce failed_units, updated_deploy_request, fn failed_unit, updated_deploy_request ->
         case SystemdUnit.get_journal(failed_unit) do
-          {:ok, stdout, stderr} -> DeployerRequest.publish_failure_notification(deploy_request, "Unit #{failed_unit.name} has failed to startup", "#{stdout}\n\n#{stderr}")
-          {:error, stdout, stderr} -> DeployerRequest.publish_failure_notification(deploy_request, "Unit #{failed_unit.name} has failed to startup; an error occurred retrieving the journal", "#{stdout}\n\n#{stderr}")
-          other -> DeployerRequest.publish_failure_notification(deploy_request, "Unit #{failed_unit.name} has failed to startup; an unknown error occurred retrieving the journal", "#{inspect other}")
+          {:ok, stdout, stderr} -> DeployerRequest.publish_failure_notification(updated_deploy_request, "Unit #{failed_unit.name} has failed to startup", "#{stdout}\n\n#{stderr}")
+          {:error, stdout, stderr} -> DeployerRequest.publish_failure_notification(updated_deploy_request, "Unit #{failed_unit.name} has failed to startup; an error occurred retrieving the journal", "#{stdout}\n\n#{stderr}")
+          other -> DeployerRequest.publish_failure_notification(updated_deploy_request, "Unit #{failed_unit.name} has failed to startup; an unknown error occurred retrieving the journal", "#{inspect other}")
         end
       end
     else
-      deploy_request
+      updated_deploy_request
     end
 
     if num_requested_monitoring_units > 0 && completed_units == 0 do
-      DeployerRequest.step_failed(deploy_request, "Deployment has failed!", "None of the units have deployed successfully")
+      DeployerRequest.step_failed(updated_deploy_request, "Deployment has failed!", "None of the units have deployed successfully")
     else
       case monitoring_result do
-        {:error, reason} -> DeployerRequest.step_failed(deploy_request, "Deployment has failed!", reason)
-        :ok -> DeployerRequest.step_completed(deploy_request)        
+        {:error, reason} -> DeployerRequest.step_failed(updated_deploy_request, "Deployment has failed!", reason)
+        :ok -> DeployerRequest.step_completed(updated_deploy_request)        
       end      
     end
   end

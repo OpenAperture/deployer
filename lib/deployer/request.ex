@@ -82,7 +82,7 @@ defmodule OpenAperture.Deployer.Request do
   @spec publish_failure_notification(OpenAperture.Deployer.Request.t, String.t(), String.t()) :: OpenAperture.Deployer.Request.t
   def publish_failure_notification(deploy_request, message, reason) do
     Logger.error("[DeployRequest][#{deploy_request.workflow.id}] #{message}\n\n#{reason}")
-    orchestrator_request = Workflow.publish_failure_notification(deploy_request.orchestrator_request, message, reason)
+    orchestrator_request = Workflow.publish_failure_notification(deploy_request.orchestrator_request, "#{message}\n\n#{reason}")
     %{deploy_request | orchestrator_request: orchestrator_request, workflow: orchestrator_request.workflow}
   end
 
