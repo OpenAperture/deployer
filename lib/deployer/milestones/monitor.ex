@@ -96,17 +96,20 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
 
       {remaining_units, returned_completed_units, returned_failed_units} = verify_unit_status(refreshed_units, deploy_request.etcd_token, [], [], [])
       remaining_units_cnt = length(remaining_units)
-      failed_units_cnt = length(failed_units)
 
       deploy_request = DeployerRequest.publish_success_notification(deploy_request, "After review, there are #{remaining_units_cnt} units still deploying...")
-      monitoring_loop_cnt = monitoring_loop_cnt + 1
-      if (monitoring_loop_cnt < 30) do
-        #sleep for a minute before retrying
-        :timer.sleep(60000)
-        monitor_remaining_units(deploy_request, monitoring_loop_cnt, remaining_units, completed_units ++ returned_completed_units, failed_units ++ returned_failed_units)    
+      if remaining_units_cnt > 0 do
+        monitoring_loop_cnt = monitoring_loop_cnt + 1
+        if (monitoring_loop_cnt < 30) do
+          #sleep for a minute before retrying
+          :timer.sleep(60000)
+          monitor_remaining_units(deploy_request, monitoring_loop_cnt, remaining_units, completed_units ++ returned_completed_units, failed_units ++ returned_failed_units)    
+        else
+          deploy_request = DeployerRequest.step_failed(deploy_request, "Deployment has failed!", "Deployment has taken over 30 minutes to complete!  Monitoring will now discontinue.")
+          {{:error, "Deployment has taken over 30 minutes to complete!"}, deploy_request, remaining_units, completed_units, failed_units}
+        end
       else
-        deploy_request = DeployerRequest.step_failed(deploy_request, "Deployment has failed!", "Deployment has taken over 30 minutes to complete!  Monitoring will now discontinue.")
-        {{:error, "Deployment has taken over 30 minutes to complete!"}, deploy_request, remaining_units, completed_units, failed_units}
+        monitor_remaining_units(deploy_request, monitoring_loop_cnt, remaining_units, completed_units ++ returned_completed_units, failed_units ++ returned_failed_units)            
       end
     end
   end
