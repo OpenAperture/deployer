@@ -43,34 +43,72 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
   """
   @spec monitor(DeployerRequest, term) :: :ok | {:error, String.t}
   def monitor(deploy_request, monitoring_loop_cnt) do
-    etcd_token = deploy_request.etcd_token
+
     num_requested_monitoring_units = if deploy_request.deployed_units, do: length(deploy_request.deployed_units), else: 0
+    Logger.debug("[Milestones.Monitor] Monitoring the deployment of #{num_requested_monitoring_units} units on cluster #{deploy_request.etcd_token}...")
+    {monitoring_result, deploy_request, units_to_monitor, completed_units, failed_units} = monitor_remaining_units(deploy_request, monitoring_loop_cnt, deploy_request.deployed_units, [], [])
 
-    if num_requested_monitoring_units > 0 do
-      Logger.debug("[Milestones.Monitor] Monitoring the deployment of #{num_requested_monitoring_units} units on cluster #{etcd_token}...")
-
-      deploy_request = DeployerRequest.publish_success_notification(deploy_request, "Starting to monitor #{num_requested_monitoring_units} units...")
-      refrshed_units = refresh_systemd_units(deploy_request.etcd_token, deploy_request.deployed_units)
-      units_to_monitor = OpenAperture.Deployer.Milestones.Monitor.verify_unit_status(refrshed_units, deploy_request.etcd_token, [])
-      units_to_monitor_cnt = length(units_to_monitor)
-
-      if units_to_monitor_cnt > 0 do
-        deploy_request = DeployerRequest.publish_success_notification(deploy_request, "After review, there are #{units_to_monitor_cnt} units still deploying...")
-        monitoring_loop_cnt = monitoring_loop_cnt + 1
-        if (monitoring_loop_cnt < 30) do
-          #sleep for a minute before recasting
-          :timer.sleep(60000)
-          monitor(deploy_request, monitoring_loop_cnt)    
-        else
-          DeployerRequest.step_failed(deploy_request, "Deployment has failed!", "Deployment has taken over 30 minutes to complete!  Monitoring will now discontinue.")
+    deploy_request = if length(failed_units) > 0 do
+      Enum.reduce failed_units, deploy_request, fn failed_unit, deploy_request ->
+        case SystemdUnit.get_journal(failed_unit) do
+          {:ok, stdout, stderr} -> DeployerRequest.publish_failure_notification(deploy_request, "Unit #{failed_unit.name} has failed to startup", "#{stdout}\n\n#{stderr}")
+          {:error, stdout, stderr} -> DeployerRequest.publish_failure_notification(deploy_request, "Unit #{failed_unit.name} has failed to startup; an error occurred retrieving the journal", "#{stdout}\n\n#{stderr}")
+          other -> DeployerRequest.publish_failure_notification(deploy_request, "Unit #{failed_unit.name} has failed to startup; an unknown error occurred retrieving the journal", "#{inspect other}")
         end
-      else
-        deploy_request = DeployerRequest.publish_success_notification(deploy_request, "There are no remaining deployments to monitor")
-        DeployerRequest.step_completed(deploy_request)
       end
     else
-        deploy_request = DeployerRequest.publish_success_notification(deploy_request, "There are no requested deployments to monitor")
-        DeployerRequest.step_completed(deploy_request)
+      deploy_request
+    end
+
+    if num_requested_monitoring_units > 0 && completed_units == 0 do
+      DeployerRequest.step_failed(deploy_request, "Deployment has failed!", "None of the units have deployed successfully")
+    else
+      case monitoring_result do
+        {:error, reason} -> DeployerRequest.step_failed(deploy_request, "Deployment has failed!", reason)
+        :ok -> DeployerRequest.step_completed(deploy_request)        
+      end      
+    end
+  end
+
+  @doc """
+  Monitors a set of Fleet units until they start, fail to start, or timeout
+
+  ## Options
+
+  The `deploy_request` option contains the DeployerRequest
+
+  The `monitoring_loop_cnt` option defines the current number of execution cycles
+
+  The `units_to_monitor` option contains a list of units to monitor
+
+  The `completed_units` option contains a list of units that have successfully started up  
+
+  The `failed_units` option contains a list of units that have failed to started up
+  """
+  @spec monitor(DeployerRequest, term) :: :ok | {:error, String.t}
+  def monitor_remaining_units(deploy_request, monitoring_loop_cnt, units_to_monitor, completed_units, failed_units) do
+    num_requested_monitoring_units = if units_to_monitor, do: length(units_to_monitor), else: 0
+    if num_requested_monitoring_units == 0 do
+      deploy_request = DeployerRequest.publish_success_notification(deploy_request, "There are no remaining units to monitor")
+      {:ok, deploy_request, units_to_monitor, completed_units, failed_units}
+    else
+      deploy_request = DeployerRequest.publish_success_notification(deploy_request, "Starting to monitor #{num_requested_monitoring_units} units...")
+      refreshed_units = refresh_systemd_units(deploy_request.etcd_token, units_to_monitor)
+
+      {remaining_units, returned_completed_units, returned_failed_units} = verify_unit_status(refreshed_units, deploy_request.etcd_token, [], [], [])
+      remaining_units_cnt = length(remaining_units)
+      failed_units_cnt = length(failed_units)
+
+      deploy_request = DeployerRequest.publish_success_notification(deploy_request, "After review, there are #{remaining_units_cnt} units still deploying...")
+      monitoring_loop_cnt = monitoring_loop_cnt + 1
+      if (monitoring_loop_cnt < 30) do
+        #sleep for a minute before retrying
+        :timer.sleep(60000)
+        monitor_remaining_units(deploy_request, monitoring_loop_cnt, remaining_units, completed_units ++ returned_completed_units, failed_units ++ returned_failed_units)    
+      else
+        deploy_request = DeployerRequest.step_failed(deploy_request, "Deployment has failed!", "Deployment has taken over 30 minutes to complete!  Monitoring will now discontinue.")
+        {{:error, "Deployment has taken over 30 minutes to complete!"}, deploy_request, remaining_units, completed_units, failed_units}
+      end
     end
   end
 
@@ -108,19 +146,23 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
   
   ## Options
   
-  The `current_unit | remaining_units` option defines the github PID
+  The `current_unit | remaining_units` option defines the SystemdUnit
   
   The `etcd_token` option defines the etcd cluster token
 
-  The `units_to_monitor` option defines which units need to continue to be monitored
+  The `remaining_units_to_monitor` option contains a list of units to monitor
+
+  The `completed_units` option contains a list of units that have successfully started up  
+
+  The `failed_units` option contains a list of units that have failed to started up
   
   ## Return Values
    
-  Map
+  {remaining_units_to_monitor, completed_units, failed_units}
   """
-  @spec verify_unit_status(List, String.t(), List) :: Map
-  def verify_unit_status([], _, units_to_monitor) do
-    units_to_monitor
+  @spec verify_unit_status([], String.t(), List, List, List) :: {List, List, List}
+  def verify_unit_status([], _, remaining_units_to_monitor, completed_units, failed_units) do
+    {remaining_units_to_monitor, completed_units, failed_units}
   end 
 
   @doc """
@@ -128,18 +170,22 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
   
   ## Options
   
-  The `current_unit | remaining_units` option defines the github PID
+  The `current_unit | remaining_units` option defines the SystemdUnit
   
   The `etcd_token` option defines the etcd cluster token
 
-  The `units_to_monitor` option defines which units need to continue to be monitored
+  The `remaining_units_to_monitor` option contains a list of units to monitor
+
+  The `completed_units` option contains a list of units that have successfully started up  
+
+  The `failed_units` option contains a list of units that have failed to started up
   
   ## Return Values
    
-  Map
+  {remaining_units_to_monitor, completed_units, failed_units}
   """
-  @spec verify_unit_status(List, String.t(), List) :: Map
-  def verify_unit_status([current_unit| remaining_units], etcd_token, units_to_monitor) do    
+  @spec verify_unit_status(List, String.t(), List, List, List) :: {List, List, List}
+  def verify_unit_status([current_unit| remaining_units], etcd_token,  remaining_units_to_monitor, completed_units, failed_units) do    
     case SystemdUnit.is_launched?(current_unit) do
       true -> Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} has been launched")
       {false, "loaded"} -> 
@@ -151,25 +197,23 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
     end
 
     case SystemdUnit.is_active?(current_unit) do
-      true -> Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} is active")
+      true -> 
+        Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} is active")
+        completed_units = completed_units ++ [current_unit]
       {false, "activating", _, _} -> 
         Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} is starting up...")
-        units_to_monitor = units_to_monitor ++ [current_unit]
+        remaining_units_to_monitor = remaining_units_to_monitor ++ [current_unit]
       {false, nil, _, _} -> 
         Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} has not registered a status yet...")
-        units_to_monitor = units_to_monitor ++ [current_unit]
-      {false, active_state, load_state, sub_state} -> 
+        remaining_units_to_monitor = remaining_units_to_monitor ++ [current_unit]
+      {false, active_state, load_state, "failed"} -> 
+        Logger.error("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} has failed to start:  #{active_state}; load state:  #{load_state}!")
+        failed_units = failed_units ++ [current_unit]
+      {false, active_state, load_state, sub_state} ->
         Logger.error("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} is #{active_state}; load state:  #{load_state}, sub state:  #{sub_state}!")
-        case SystemdUnit.get_journal(current_unit) do
-          {:ok, stdout, stderr} ->
-            Logger.error("[Milestones.Monitor] Fleet Journal:\n#{stdout}\n\n#{stderr}")
-          {:error, stdout, stderr} ->
-            Logger.error("[Milestones.Monitor] Logs were unable to be retrieved:\n#{stdout}\n\n#{stderr}")
-          other ->
-            Logger.error("[Milestones.Monitor] Logs returned an unknown format:\n#{inspect other}")
-        end
+        failed_units = failed_units ++ [current_unit]
     end
 
-    verify_unit_status(remaining_units, etcd_token, units_to_monitor)
+    verify_unit_status(remaining_units, etcd_token, remaining_units_to_monitor, completed_units, failed_units)
   end 
 end

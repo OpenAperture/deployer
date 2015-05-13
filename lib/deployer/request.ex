@@ -61,7 +61,28 @@ defmodule OpenAperture.Deployer.Request do
   """
   @spec publish_success_notification(OpenAperture.Deployer.Request.t, String.t()) :: OpenAperture.Deployer.Request.t
   def publish_success_notification(deploy_request, message) do
+    Logger.debug("[DeployRequest][#{deploy_request.id}] #{message}")
     orchestrator_request = Workflow.publish_success_notification(deploy_request.orchestrator_request, message)
+    %{deploy_request | orchestrator_request: orchestrator_request, workflow: orchestrator_request.workflow}
+  end
+
+  @doc """
+  Convenience wrapper to publish a "failure" notification to the associated Workflow
+
+  ## Options
+   
+  The `deploy_request` option defines the Request
+
+  The `message` option defines the message to publish
+
+  ## Return values
+
+  Request
+  """
+  @spec publish_failure_notification(OpenAperture.Deployer.Request.t, String.t(), String.t()) :: OpenAperture.Deployer.Request.t
+  def publish_failure_notification(deploy_request, message, reason) do
+    Logger.error("[DeployRequest][#{deploy_request.id}] #{message}\n\n#{reason}")
+    orchestrator_request = Workflow.publish_failure_notification(deploy_request.orchestrator_request, message, reason)
     %{deploy_request | orchestrator_request: orchestrator_request, workflow: orchestrator_request.workflow}
   end
 
@@ -80,7 +101,7 @@ defmodule OpenAperture.Deployer.Request do
 
   Request
   """
-  @spec publish_success_notification(OpenAperture.Deployer.Request.t, String.t()) :: OpenAperture.Deployer.Request.t
+  @spec step_failed(OpenAperture.Deployer.Request.t, String.t(), String.t()) :: OpenAperture.Deployer.Request.t
   def step_failed(deploy_request, message, reason) do
     acknowledge(deploy_request)
     orchestrator_request = Workflow.step_failed(deploy_request.orchestrator_request, message, reason)
