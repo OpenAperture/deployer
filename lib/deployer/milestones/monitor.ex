@@ -53,7 +53,6 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
         case SystemdUnit.get_journal(failed_unit) do
           {:ok, stdout, stderr} -> DeployerRequest.publish_failure_notification(updated_deploy_request, "Unit #{failed_unit.name} has failed to startup", "#{stdout}\n\n#{stderr}")
           {:error, stdout, stderr} -> DeployerRequest.publish_failure_notification(updated_deploy_request, "Unit #{failed_unit.name} has failed to startup; an error occurred retrieving the journal", "#{stdout}\n\n#{stderr}")
-          other -> DeployerRequest.publish_failure_notification(updated_deploy_request, "Unit #{failed_unit.name} has failed to startup; an unknown error occurred retrieving the journal", "#{inspect other}")
         end
       end
     else
