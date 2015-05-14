@@ -16,9 +16,9 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
   def start_link(deploy_request) do
     Logger.debug("[Milestones.Monitor] Starting a new Deployment Monitoring task for Workflow #{deploy_request.workflow.id}...")
     Task.start_link(fn -> 
+      deploy_request = DeployerRequest.publish_success_notification(deploy_request, "The deploy (monitor) milestone has been received and is being processed by Deployer #{System.get_env("HOSTNAME")} in cluster #{deploy_request.etcd_token}")
+      
       try do
-        deploy_request = DeployerRequest.publish_success_notification(deploy_request, "The deploy (monitor) milestone has been received and is being processed by Deployer #{System.get_env("HOSTNAME")} in cluster #{deploy_request.etcd_token}")
-
         Monitor.monitor(deploy_request, 0) 
       catch
         :exit, code   -> 
