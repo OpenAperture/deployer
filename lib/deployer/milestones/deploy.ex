@@ -5,7 +5,6 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
 
   alias OpenAperture.Deployer.Milestones.Deploy
   alias OpenAperture.Deployer.Request, as: DeployerRequest
-  alias OpenAperture.Deployer.Milestones.MonitorSupervisor
   alias OpenAperture.Deployer.Milestones.Monitor
 
   alias OpenAperture.Fleet.EtcdCluster
@@ -19,6 +18,8 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
     Logger.debug("[Milestones.Deploy] Starting a new Deployment task for Workflow #{deploy_request.workflow.id}...")
     Task.start_link(fn -> 
       try do
+        deploy_request = DeployerRequest.publish_success_notification(deploy_request, "The deploy milestone has been received and is being processed by Deployer #{System.get_env("HOSTNAME")} in cluster #{deploy_request.etcd_token}")
+
         successful_deploy_request = Deploy.deploy(deploy_request)
 
         successful_deploy_request = DeployerRequest.publish_success_notification(successful_deploy_request, "The units has been deployed, starting deployment monitor...")
