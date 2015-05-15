@@ -41,7 +41,7 @@ defmodule OpenAperture.Deployer.Dispatcher do
   Returns `{:ok, %{}}` or throws an exception if subscription was unsuccessful.
   """
   def init(:ok) do
-    case subscribe_for_queue("deployer", &spawn_deployment_task/3) do
+    case subscribe_for_queue(Configuration.get_current_queue_name, &spawn_deployment_task/3) do
       {:ok, _} -> {:ok, %{}}
       {:error, reason} -> {:error, reason}
     end    
