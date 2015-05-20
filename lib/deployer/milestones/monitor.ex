@@ -95,6 +95,9 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
     else
       deploy_request = DeployerRequest.publish_success_notification(deploy_request, "Starting to monitor #{num_requested_monitoring_units} units...")
       refreshed_units = refresh_systemd_units(deploy_request.etcd_token, units_to_monitor)
+      if refreshed_units == nil || length(refreshed_units) == 0 do
+        Logger.error("Invalid units were returned from refresh_systemd_units!")
+      end
 
       {remaining_units, returned_completed_units, returned_failed_units} = verify_unit_status(refreshed_units, deploy_request.etcd_token, [], [], [])
       remaining_units_cnt = length(remaining_units)
@@ -131,16 +134,32 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
   """
   @spec refresh_systemd_units(String.t(), List) :: List
   def refresh_systemd_units(etcd_token, old_systemd_units) do
-    unit_map = Enum.reduce old_systemd_units, %{}, fn deployed_unit, unit_map ->
-      Map.put(unit_map, deployed_unit.name, deployed_unit)
-    end
+    if old_systemd_units == nil do
+      Logger.debug("[Milestones.Monitor] There are no units to refresh")
+      []
+    else
+      Logger.debug("[Milestones.Monitor] Refreshing SystemdUnits...")
+      unit_map = Enum.reduce old_systemd_units, %{}, fn deployed_unit, unit_map ->
+        if deployed_unit == nil do
+          Logger.error("[Milestones.Monitor] Unable to refresh all SystemdUnits, an invalid Unit was found in deployed_unit!")
+          unit_map
+        else
+          Map.put(unit_map, deployed_unit.name, deployed_unit)
+        end
+      end
 
-    all_units = SystemdUnit.get_units(etcd_token)
-    Enum.reduce all_units, [], fn refreshed_unit, refreshed_units ->
-      if Map.has_key?(unit_map, refreshed_unit.name) do
-        refreshed_units ++ [refreshed_unit]
+      all_units = SystemdUnit.get_units(etcd_token)
+      if all_units == nil do
+        Logger.error("[Milestones.Monitor] Refreshing all SystemdUnits has failed!  SystemdUnit.get_units returned an invalid array of units")
+        []
       else
-        refreshed_units
+        Enum.reduce all_units, [], fn refreshed_unit, refreshed_units ->
+          if Map.has_key?(unit_map, refreshed_unit.name) do
+            refreshed_units ++ [refreshed_unit]
+          else
+            refreshed_units
+          end
+        end
       end
     end
   end
