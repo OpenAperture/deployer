@@ -48,7 +48,7 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
 
     num_requested_monitoring_units = if deploy_request.deployed_units, do: length(deploy_request.deployed_units), else: 0
     Logger.debug("[Milestones.Monitor] Monitoring the deployment of #{num_requested_monitoring_units} units on cluster #{deploy_request.etcd_token}...")
-    {monitoring_result, updated_deploy_request, units_to_monitor, completed_units, failed_units} = monitor_remaining_units(deploy_request, monitoring_loop_cnt, deploy_request.deployed_units, [], [])
+    {monitoring_result, updated_deploy_request, _units_to_monitor, completed_units, failed_units} = monitor_remaining_units(deploy_request, monitoring_loop_cnt, deploy_request.deployed_units, [], [])
 
     updated_deploy_request = if length(failed_units) > 0 do
       Enum.reduce failed_units, updated_deploy_request, fn failed_unit, updated_deploy_request ->
