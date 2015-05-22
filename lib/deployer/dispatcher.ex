@@ -6,9 +6,11 @@ defmodule OpenAperture.Deployer.Dispatcher do
 
   require Logger
 
+  @connection_options nil
+
   use   GenServer
   use   OpenAperture.Messaging
-  use   Timex
+  use   Timex 
 
   alias OpenAperture.Deployer.Configuration
 
@@ -18,12 +20,8 @@ defmodule OpenAperture.Deployer.Dispatcher do
   alias OpenAperture.Messaging.ConnectionOptionsResolver
 
   alias OpenAperture.Deployer.Request, as: DeployRequest
-  alias OpenAperture.Deployer.Milestones.DeploySupervisor
   alias OpenAperture.Deployer.Milestones.Deploy
   alias OpenAperture.Deployer.MessageManager
-
-  import Supervisor.Spec
-  import OpenAperture.Messaging.AMQP.SubscriptionHandler, only: [acknowledge: 2]
 
   @doc """
   Starts the Dispatcher server.
