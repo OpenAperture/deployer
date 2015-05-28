@@ -64,5 +64,30 @@ defmodule OpenAperture.Deployer.Milestones.DeployTest do
   after
     :meck.unload(EtcdCluster)
     :meck.unload(DeployerRequest)
-  end    
+  end
+
+  test "deploy - success with custom fleet config" do
+    :meck.new(EtcdCluster, [:passthrough])
+    :meck.expect(EtcdCluster, :get_host_count, fn _ -> 3 end)
+    :meck.expect(EtcdCluster, :deploy_units, fn _,_,_ -> [] end)
+    
+    deployer_request = %DeployerRequest{
+      etcd_token: "123abc",
+      deployable_units: [%{}],
+      orchestrator_request: %{
+        fleet_config: %{
+          "instance_cnt": 10
+        }
+      }
+    }
+
+    :meck.new(DeployerRequest, [:passthrough])
+    :meck.expect(DeployerRequest, :publish_success_notification, fn _,_ -> deployer_request end)
+
+    returned_request = Deploy.deploy(deployer_request)
+    assert returned_request != nil
+  after
+    :meck.unload(EtcdCluster)
+    :meck.unload(DeployerRequest)
+  end  
 end

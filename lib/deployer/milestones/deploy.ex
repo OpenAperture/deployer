@@ -45,7 +45,14 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
   @spec deploy(DeployerRequest) :: DeployerRequest
   def deploy(deploy_request) do
     Logger.info("[Milestones.Deploy] Beginning Fleet deployment...")
-    host_cnt = EtcdCluster.get_host_count(deploy_request.etcd_token)
+
+    if  deploy_request.orchestrator_request != nil &&
+        deploy_request.orchestrator_request.fleet_config != nil && 
+        deploy_request.orchestrator_request.fleet_config["instance_cnt"] != nil do
+          host_cnt = deploy_request.orchestrator_request.fleet_config["instance_cnt"]
+    else
+      host_cnt = EtcdCluster.get_host_count(deploy_request.etcd_token)
+    end
 
     Logger.debug("[Milestones.Deploy] Reviewing units...")
     cond do
