@@ -53,7 +53,7 @@ defmodule OpenAperture.Deployer.Milestones.DeployTest do
     
     deployer_request = %DeployerRequest{
       etcd_token: "123abc",
-      deployable_units: [%{}]
+      deployable_units: [%FleetApi.Unit{}]
     }
 
     :meck.new(DeployerRequest, [:passthrough])
@@ -73,7 +73,7 @@ defmodule OpenAperture.Deployer.Milestones.DeployTest do
     
     deployer_request = %DeployerRequest{
       etcd_token: "123abc",
-      deployable_units: [%{}],
+      deployable_units: [%FleetApi.Unit{}],
       orchestrator_request: %{
         fleet_config: %{
           "instance_cnt": 10

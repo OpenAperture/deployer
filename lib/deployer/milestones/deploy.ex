@@ -46,30 +46,52 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
   def deploy(deploy_request) do
     Logger.info("[Milestones.Deploy] Beginning Fleet deployment...")
 
+    host_cnt = EtcdCluster.get_host_count(deploy_request.etcd_token)
+
     if  deploy_request.orchestrator_request != nil &&
         deploy_request.orchestrator_request.fleet_config != nil && 
         deploy_request.orchestrator_request.fleet_config["instance_cnt"] != nil do
-          host_cnt = deploy_request.orchestrator_request.fleet_config["instance_cnt"]
+          requested_instance_cnt = deploy_request.orchestrator_request.fleet_config["instance_cnt"]
     else
-      host_cnt = EtcdCluster.get_host_count(deploy_request.etcd_token)
+      requested_instance_cnt = EtcdCluster.get_host_count(deploy_request.etcd_token)
     end
 
     Logger.debug("[Milestones.Deploy] Reviewing units...")
     cond do
       host_cnt == 0 -> DeployerRequest.step_failed(deploy_request, "Deployment failed!", "Unable to find accessible hosts in cluster #{deploy_request.etcd_token}!")
+      requested_instance_cnt == 0 -> DeployerRequest.step_failed(deploy_request, "Deployment failed!", "Cannot specify 0 instances of services to deploy!")
       deploy_request.deployable_units == nil || length(deploy_request.deployable_units) == 0 -> DeployerRequest.step_failed(deploy_request.deployable_units, "Deployment failed!", "There are no valid units to deploy!")
-      true -> do_deploy(deploy_request, host_cnt)
+      true -> do_deploy(deploy_request, host_cnt, requested_instance_cnt)
     end
   end
 
-  @spec do_deploy(DeployerRequest, term) :: DeployerRequest
-  defp do_deploy(deploy_request, requested_instance_cnt) do
+  @spec do_deploy(DeployerRequest, term, term) :: DeployerRequest
+  defp do_deploy(deploy_request, host_cnt, requested_instance_cnt) do
     Logger.debug("[Milestones.Deploy] Allocating #{requested_instance_cnt} ports on the cluster...");
-    map_available_ports = nil
+    map_available_ports = build_port_map(deploy_request.deployable_units, requested_instance_cnt, %{})
 
     Logger.debug("[Milestones.Deploy] Deploying units...")
-    deploy_request = DeployerRequest.publish_success_notification(deploy_request, "Preparing to deploy #{length(deploy_request.deployable_units)} unit(s) onto #{requested_instance_cnt} host(s)...")
+    deploy_request = DeployerRequest.publish_success_notification(deploy_request, "Preparing to deploy #{requested_instance_cnt} instance(s) of each of the #{length(deploy_request.deployable_units)} unit(s) onto #{host_cnt} host(s)...")
 
     %{deploy_request | deployed_units: EtcdCluster.deploy_units(deploy_request.etcd_token, deploy_request.deployable_units, map_available_ports)}
   end
+
+  @spec build_port_map([], term, Map) :: Map
+  defp build_port_map([], _, map_available_ports) do
+    map_available_ports
+  end
+
+  @spec build_port_map(List, term, Map) :: Map
+  defp build_port_map([deployable_unit | remaining_units], requested_instance_cnt, map_available_ports) do
+    build_port_map(remaining_units, requested_instance_cnt, Map.put(map_available_ports, deployable_unit.name, create_port_list([], 0, requested_instance_cnt)))
+  end
+
+  @spec create_port_list(List, term, term) :: List
+  defp create_port_list(list, cur_idx, max_cnt) do
+    if cur_idx == max_cnt do
+      list
+    else
+      create_port_list(list ++ [0], cur_idx+1, max_cnt)
+    end
+  end  
 end
