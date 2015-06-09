@@ -59,13 +59,14 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
 
     {monitoring_result, updated_deploy_request, _units_to_monitor, completed_units, failed_units} = monitor_remaining_units(deploy_request, monitoring_loop_cnt, deploy_request.deployed_units, [], [])
 
-    updated_deploy_request = if length(failed_units) > 0 do
-      unit_names = if failed_units > 0 do
-        Enum.reduce failed_units, [], fn(failed_unit, unit_names) ->
+    updated_deploy_request = if length(failed_units) > 0 do      
+      Logger.debug("[Milestones.Monitor] Resolving failed unit names")
+      unit_names =  Enum.reduce failed_units, [], fn(failed_unit, unit_names) ->
+        if failed_unit != nil do
           unit_names ++ [failed_unit.name]
+        else
+          unit_names ++ ["Unknown Unit"]
         end
-      else
-        []
       end
       updated_deploy_request = DeployerRequest.publish_failure_notification(updated_deploy_request, "The following unit(s) have failed to deploy:  #{inspect unit_names}")
 
@@ -76,18 +77,25 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
         end
       end
     else
+      Logger.debug("[Milestones.Monitor] There were no failed units")
       updated_deploy_request
     end
 
+    Logger.debug("[Milestones.Monitor] Resolving completed unit names")
     unit_names = if length(completed_units) > 0 do
       Enum.reduce completed_units, [], fn(completed_unit, unit_names) ->
-        unit_names ++ [completed_unit.name]
+        if completed_unit != nil do
+          unit_names ++ [completed_unit.name]
+        else
+          unit_names ++ ["Unknown Unit"]
+        end
       end
     else
       []
     end
     updated_deploy_request = DeployerRequest.publish_success_notification(updated_deploy_request, "The following unit(s) have deployed successfully:  #{inspect unit_names}")
 
+    Logger.debug("[Milestones.Monitor] Resolving if any units have successfully deployed")
     if num_requested_monitoring_units > 0 && length(completed_units) == 0 do
       DeployerRequest.step_failed(updated_deploy_request, "Deployment has failed!", "None of the units have deployed successfully")
     else
