@@ -146,7 +146,7 @@ defmodule OpenAperture.Deployer.Milestones.MonitorTest do
     }
 
     :meck.new(DeployerRequest, [:passthrough])
-    :meck.expect(DeployerRequest, :publish_success_notification, fn _,_ -> :deployer_request end)
+    :meck.expect(DeployerRequest, :publish_success_notification, fn _,_ -> deployer_request end)
     :meck.expect(DeployerRequest, :step_completed, fn _ -> deployer_request end)
 
     returned_request = Monitor.monitor(deployer_request, 0)

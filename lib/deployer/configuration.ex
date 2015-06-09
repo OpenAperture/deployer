@@ -13,7 +13,7 @@ defmodule OpenAperture.Deployer.Configuration do
   @spec get_current_exchange_id() :: String.t()
   def get_current_exchange_id do
     System.get_env()
-    get_config("EXCHANGE_ID", :openaperture_builder, :exchange_id)
+    get_config("EXCHANGE_ID", :openaperture_deployer, :exchange_id)
   end
 
   @doc """
@@ -28,7 +28,7 @@ defmodule OpenAperture.Deployer.Configuration do
   @spec get_current_broker_id() :: String.t()
   def get_current_broker_id do
     System.get_env()
-    get_config("BROKER_ID", :openaperture_builder, :broker_id)
+    get_config("BROKER_ID", :openaperture_deployer, :broker_id)
   end
 
   @doc """
@@ -42,7 +42,7 @@ defmodule OpenAperture.Deployer.Configuration do
   """ 
   @spec get_current_queue_name() :: String.t()
   def get_current_queue_name do
-    get_config("QUEUE_NAME", :openaperture_overseer, :queue_name)
+    get_config("QUEUE_NAME", :openaperture_deployer, :queue_name)
   end
 
   @doc false
