@@ -217,4 +217,254 @@ defmodule OpenAperture.Deployer.Milestones.MonitorTest do
     :meck.unload(DeployerRequest)
     :meck.unload(SystemdUnit)
   end  
+
+  # ================================
+  # log_failed_units tests
+
+  test "log_failed_units - no failed units" do
+    deployer_request = %DeployerRequest{
+      etcd_token: "123abc",
+      deployed_units: []
+    }
+
+    returned_request = Monitor.log_failed_units(deployer_request, [])
+    assert returned_request != nil
+  end
+
+  test "log_failed_units - single failed units" do
+    :meck.new(SystemdUnit, [:passthrough])
+    :meck.expect(SystemdUnit, :get_journal, fn _ -> {:ok, "stdout", "stderr"} end)
+
+    deployer_request = %DeployerRequest{
+      etcd_token: "123abc",
+      deployed_units: []
+    }
+
+    :meck.new(DeployerRequest, [:passthrough])
+    :meck.expect(DeployerRequest, :publish_failure_notification, fn _,_,_ -> deployer_request end)  
+    
+    failed_units = [
+      %SystemdUnit{
+
+      }
+    ]
+
+    returned_request = Monitor.log_failed_units(deployer_request, failed_units)
+    assert returned_request != nil
+  after
+    :meck.unload(SystemdUnit)    
+    :meck.unload(DeployerRequest)
+  end  
+
+  test "log_failed_units - multiple failed units" do
+    :meck.new(SystemdUnit, [:passthrough])
+    :meck.expect(SystemdUnit, :get_journal, fn _ -> {:ok, "stdout", "stderr"} end)
+
+    deployer_request = %DeployerRequest{
+      etcd_token: "123abc",
+      deployed_units: []
+    }
+
+    :meck.new(DeployerRequest, [:passthrough])
+    :meck.expect(DeployerRequest, :publish_failure_notification, fn _,_,_ -> deployer_request end)  
+    
+    failed_units = [
+      %SystemdUnit{},
+      %SystemdUnit{}
+    ]
+
+    returned_request = Monitor.log_failed_units(deployer_request, failed_units)
+    assert returned_request != nil
+  after
+    :meck.unload(SystemdUnit)    
+    :meck.unload(DeployerRequest)
+  end
+
+  test "log_failed_units - multiple failed units and journal failure" do
+    :meck.new(SystemdUnit, [:passthrough])
+    :meck.expect(SystemdUnit, :get_journal, fn _ -> {:error, "stdout", "stderr"} end)
+
+    deployer_request = %DeployerRequest{
+      etcd_token: "123abc",
+      deployed_units: []
+    }
+
+    :meck.new(DeployerRequest, [:passthrough])
+    :meck.expect(DeployerRequest, :publish_failure_notification, fn _,_,_ -> deployer_request end)  
+    
+    failed_units = [
+      %SystemdUnit{},
+      %SystemdUnit{}
+    ]
+
+    returned_request = Monitor.log_failed_units(deployer_request, failed_units)
+    assert returned_request != nil
+  after
+    :meck.unload(SystemdUnit)    
+    :meck.unload(DeployerRequest)
+  end
+
+  # ================================
+  # log_completed_units tests
+
+  test "log_completed_units - no units" do
+    deployer_request = %DeployerRequest{
+      etcd_token: "123abc",
+      deployed_units: []
+    }
+
+    :meck.new(DeployerRequest, [:passthrough])
+    :meck.expect(DeployerRequest, :publish_success_notification, fn _,_ -> deployer_request end)  
+
+    returned_request = Monitor.log_completed_units(deployer_request, [])
+    assert returned_request != nil
+  after  
+    :meck.unload(DeployerRequest)    
+  end
+
+  test "log_completed_units - single unit" do
+    deployer_request = %DeployerRequest{
+      etcd_token: "123abc",
+      deployed_units: []
+    }
+
+    :meck.new(DeployerRequest, [:passthrough])
+    :meck.expect(DeployerRequest, :publish_success_notification, fn _,_ -> deployer_request end)  
+    
+    completed_units = [
+      %SystemdUnit{}
+    ]
+
+    returned_request = Monitor.log_completed_units(deployer_request, completed_units)
+    assert returned_request != nil
+  after  
+    :meck.unload(DeployerRequest)
+  end  
+
+  test "log_completed_units - multiple units" do
+    deployer_request = %DeployerRequest{
+      etcd_token: "123abc",
+      deployed_units: []
+    }
+
+    :meck.new(DeployerRequest, [:passthrough])
+    :meck.expect(DeployerRequest, :publish_success_notification, fn _,_ -> deployer_request end)  
+    
+    completed_units = [
+      %SystemdUnit{},
+      %SystemdUnit{}
+    ]
+
+    returned_request = Monitor.log_completed_units(deployer_request, completed_units)
+    assert returned_request != nil
+  after
+  
+    :meck.unload(DeployerRequest)
+  end  
+
+  # ================================
+  # log_monitoring_result tests
+
+  test "log_monitoring_result - success with no units" do
+    deployer_request = %DeployerRequest{
+      etcd_token: "123abc",
+      deployed_units: []
+    }
+    
+    :meck.new(DeployerRequest, [:passthrough])
+    :meck.expect(DeployerRequest, :step_completed, fn _ -> deployer_request end)  
+
+    completed_units = []
+    num_requested_monitoring_units = 0
+    returned_request = Monitor.log_monitoring_result(deployer_request, :ok, completed_units, num_requested_monitoring_units)
+    assert returned_request != nil
+  after  
+    :meck.unload(DeployerRequest)    
+  end  
+
+  test "log_monitoring_result - failed with no units" do
+    deployer_request = %DeployerRequest{
+      etcd_token: "123abc",
+      deployed_units: []
+    }
+    
+    :meck.new(DeployerRequest, [:passthrough])
+    :meck.expect(DeployerRequest, :step_failed, fn _,_,_ -> deployer_request end)  
+
+    completed_units = []
+    num_requested_monitoring_units = 0
+    returned_request = Monitor.log_monitoring_result(deployer_request, {:error, "bad news bears"}, completed_units, num_requested_monitoring_units)
+    assert returned_request != nil
+  after  
+    :meck.unload(DeployerRequest)    
+  end    
+
+  test "log_monitoring_result - failed with expected units" do
+    deployer_request = %DeployerRequest{
+      etcd_token: "123abc",
+      deployed_units: []
+    }
+    
+    :meck.new(DeployerRequest, [:passthrough])
+    :meck.expect(DeployerRequest, :step_failed, fn _,_,_ -> deployer_request end)  
+
+    completed_units = []
+    num_requested_monitoring_units = 10
+    returned_request = Monitor.log_monitoring_result(deployer_request, :ok, completed_units, num_requested_monitoring_units)
+    assert returned_request != nil
+  after  
+    :meck.unload(DeployerRequest)    
+  end      
+
+  # ================================
+  # log_requested_units tests
+
+  test "log_requested_units - no units" do
+    deployer_request = %DeployerRequest{
+      etcd_token: "123abc",
+      deployed_units: []
+    }
+
+    :meck.new(DeployerRequest, [:passthrough])
+    :meck.expect(DeployerRequest, :publish_success_notification, fn _,_ -> deployer_request end)  
+
+    returned_request = Monitor.log_requested_units(deployer_request, 0)
+    assert returned_request != nil
+  after  
+    :meck.unload(DeployerRequest)    
+  end
+
+  test "log_requested_units - single unit" do
+    deployer_request = %DeployerRequest{
+      etcd_token: "123abc",
+      deployed_units: [%SystemdUnit{}]
+    }
+
+    :meck.new(DeployerRequest, [:passthrough])
+    :meck.expect(DeployerRequest, :publish_success_notification, fn _,_ -> deployer_request end)  
+    
+    returned_request = Monitor.log_requested_units(deployer_request, 1)
+    assert returned_request != nil
+  after  
+    :meck.unload(DeployerRequest)
+  end  
+
+  test "log_requested_units - multiple units" do
+    deployer_request = %DeployerRequest{
+      etcd_token: "123abc",
+      deployed_units: [%SystemdUnit{},
+      %SystemdUnit{}]
+    }
+
+    :meck.new(DeployerRequest, [:passthrough])
+    :meck.expect(DeployerRequest, :publish_success_notification, fn _,_ -> deployer_request end)  
+    
+    returned_request = Monitor.log_requested_units(deployer_request, 2)
+    assert returned_request != nil
+  after
+  
+    :meck.unload(DeployerRequest)
+  end 
+
+
 end

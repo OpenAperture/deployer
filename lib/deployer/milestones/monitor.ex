@@ -45,9 +45,33 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
   """
   @spec monitor(DeployerRequest, term) :: :ok | {:error, String.t}
   def monitor(deploy_request, monitoring_loop_cnt) do
-
     num_requested_monitoring_units = if deploy_request.deployed_units, do: length(deploy_request.deployed_units), else: 0
     Logger.debug("[Milestones.Monitor] Monitoring the deployment of #{num_requested_monitoring_units} units on cluster #{deploy_request.etcd_token}...")
+    deploy_request = log_requested_units(deploy_request, num_requested_monitoring_units)
+
+    {monitoring_result, updated_deploy_request, _units_to_monitor, completed_units, failed_units} = monitor_remaining_units(deploy_request, monitoring_loop_cnt, deploy_request.deployed_units, [], [])
+
+    updated_deploy_request = log_failed_units(updated_deploy_request, failed_units)
+    updated_deploy_request = log_completed_units(updated_deploy_request, completed_units)
+
+    log_monitoring_result(updated_deploy_request, monitoring_result, completed_units, num_requested_monitoring_units)
+  end
+
+  @doc """
+  Method to update the DeployerRequest with the requested units to monitor
+
+  ## Options
+
+  The `deploy_request` option contains the DeployerRequest
+
+  The `num_requested_monitoring_units` option contains a Integer number of requested units to monitor
+
+  ## Return Value
+
+  The updated DeployerRequest
+  """
+  @spec log_requested_units(DeployerRequest, term) :: DeployerRequest
+  def log_requested_units(deploy_request, num_requested_monitoring_units) do
     unit_names = if num_requested_monitoring_units > 0 do
       Enum.reduce deploy_request.deployed_units, [], fn(deployable_unit, unit_names) ->
         unit_names ++ [deployable_unit.name]
@@ -55,33 +79,62 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
     else
       []
     end
-    deploy_request = DeployerRequest.publish_success_notification(deploy_request, "Monitoring deployment of the following unit(s):  #{inspect unit_names}")
+    DeployerRequest.publish_success_notification(deploy_request, "Monitoring deployment of the following unit(s):  #{inspect unit_names}")    
+  end
 
-    {monitoring_result, updated_deploy_request, _units_to_monitor, completed_units, failed_units} = monitor_remaining_units(deploy_request, monitoring_loop_cnt, deploy_request.deployed_units, [], [])
 
-    updated_deploy_request = if length(failed_units) > 0 do      
-      Logger.debug("[Milestones.Monitor] Resolving failed unit names")
-      unit_names =  Enum.reduce failed_units, [], fn(failed_unit, unit_names) ->
-        if failed_unit != nil do
-          unit_names ++ [failed_unit.name]
-        else
-          unit_names ++ ["Unknown Unit"]
-        end
-      end
-      updated_deploy_request = DeployerRequest.publish_failure_notification(updated_deploy_request, "The following unit(s) have failed to deploy:  #{inspect unit_names}")
+  @doc """
+  Method to update the DeployerRequest with the failed unit journal logs
 
-      Enum.reduce failed_units, updated_deploy_request, fn failed_unit, updated_deploy_request ->
-        case SystemdUnit.get_journal(failed_unit) do
-          {:ok, stdout, stderr} -> DeployerRequest.publish_failure_notification(updated_deploy_request, "Unit #{failed_unit.name} has failed to startup", "#{stdout}\n\n#{stderr}")
-          {:error, stdout, stderr} -> DeployerRequest.publish_failure_notification(updated_deploy_request, "Unit #{failed_unit.name} has failed to startup; an error occurred retrieving the journal", "#{stdout}\n\n#{stderr}")
-        end
-      end
-    else
+  ## Options
+
+  The `deploy_request` option contains the DeployerRequest
+
+  The `failed_units` option contains a list of units that have failed to started up
+
+  ## Return Value
+
+  The updated DeployerRequest
+  """
+  @spec log_failed_units(DeployerRequest, term) :: DeployerRequest
+  def log_failed_units(deploy_request, failed_units) do
+    if length(failed_units) == 0 do      
       Logger.debug("[Milestones.Monitor] There were no failed units")
-      updated_deploy_request
-    end
+      deploy_request
+    else      
+      Logger.debug("[Milestones.Monitor] Resolving failed unit names from:  #{inspect failed_units}")
+      {unit_names, deploy_request} =  Enum.reduce failed_units, {[], deploy_request}, fn(failed_unit, {unit_names, deploy_request}) ->
+        if failed_unit != nil do
+          deploy_request = case SystemdUnit.get_journal(failed_unit) do
+            {:ok, stdout, stderr} -> DeployerRequest.publish_failure_notification(deploy_request, "Unit #{failed_unit.name} has failed to startup", "#{stdout}\n\n#{stderr}")
+            {:error, stdout, stderr} -> DeployerRequest.publish_failure_notification(deploy_request, "Unit #{failed_unit.name} has failed to startup; an error occurred retrieving the journal", "#{stdout}\n\n#{stderr}")
+          end          
+          {unit_names ++ [failed_unit.name], deploy_request}
+        else
+          {unit_names ++ ["Unknown Unit"], deploy_request}
+        end
+      end
+      DeployerRequest.publish_failure_notification(deploy_request, "The following unit(s) have failed to deploy:  #{inspect unit_names}", "")
+    end    
+  end
 
-    Logger.debug("[Milestones.Monitor] Resolving completed unit names")
+  @doc """
+  Method to update the DeployerRequest with the the units that have started successfully
+
+  ## Options
+
+  The `deploy_request` option contains the DeployerRequest
+
+  The `completed_units` option contains a list of units that have started up
+
+  ## Return Value
+
+  The updated DeployerRequest
+  """
+  @spec log_completed_units(DeployerRequest, term) :: DeployerRequest
+  def log_completed_units(deploy_request, completed_units) do
+    Logger.debug("[Milestones.Monitor] Resolving completed unit names from:  #{inspect completed_units}")
+    
     unit_names = if length(completed_units) > 0 do
       Enum.reduce completed_units, [], fn(completed_unit, unit_names) ->
         if completed_unit != nil do
@@ -93,17 +146,37 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
     else
       []
     end
-    updated_deploy_request = DeployerRequest.publish_success_notification(updated_deploy_request, "The following unit(s) have deployed successfully:  #{inspect unit_names}")
+    DeployerRequest.publish_success_notification(deploy_request, "The following unit(s) have deployed successfully:  #{inspect unit_names}")   
+  end
 
-    Logger.debug("[Milestones.Monitor] Resolving if any units have successfully deployed")
+  @doc """
+  Method to update the DeployerRequest with the the units that have started successfully
+
+  ## Options
+
+  The `deploy_request` option contains the DeployerRequest
+
+  The `monitoring_result` option contains the atom result
+
+  The `completed_units` option contains a list of units that have started up
+
+  The `num_requested_monitoring_units` option contains a Integer number of requested units to monitor
+
+  ## Return Value
+
+  The updated DeployerRequest
+  """
+  @spec log_monitoring_result(DeployerRequest, term, List, term) :: DeployerRequest
+  def log_monitoring_result(deploy_request, monitoring_result, completed_units, num_requested_monitoring_units) do
+    Logger.debug("[Milestones.Monitor] Resolving if ny units have successfully deployed, num_requested_monitoring_units - #{inspect num_requested_monitoring_units}, completed_units - #{inspect completed_units}")
     if num_requested_monitoring_units > 0 && length(completed_units) == 0 do
-      DeployerRequest.step_failed(updated_deploy_request, "Deployment has failed!", "None of the units have deployed successfully")
+      DeployerRequest.step_failed(deploy_request, "Deployment has failed!", "None of the units have deployed successfully")
     else
       case monitoring_result do
-        {:error, reason} -> DeployerRequest.step_failed(updated_deploy_request, "Deployment has failed!", reason)
-        :ok -> DeployerRequest.step_completed(updated_deploy_request)        
+        {:error, reason} -> DeployerRequest.step_failed(deploy_request, "Deployment has failed!", reason)
+        :ok -> DeployerRequest.step_completed(deploy_request)        
       end      
-    end
+    end   
   end
 
   @doc """
