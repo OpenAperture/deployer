@@ -26,10 +26,10 @@ defmodule OpenAperture.Deployer.Mixfile do
 
   defp deps do
     [
-      {:ex_doc, github: "elixir-lang/ex_doc", only: [:test]},
-      {:earmark, github: "pragdave/earmark", tag: "v0.1.8", only: [:test]},    
+      {:ex_doc, github: "elixir-lang/ex_doc", only: [:test], override: true},
+      {:earmark, github: "pragdave/earmark", tag: "v0.1.8", only: [:test], override: true},    
       
-      {:openaperture_messaging, git: "https://github.com/OpenAperture/messaging.git", ref: "8c51d099ec79473b23b3c385c072e6bf2219fba7", override: true},
+      {:openaperture_messaging, git: "https://github.com/OpenAperture/messaging.git", ref: "e48c52b98abc86f4404954e7b4c85b090e83c69c", override: true},
       {:openaperture_manager_api, git: "https://github.com/OpenAperture/manager_api.git", ref: "5d442cfbdd45e71c1101334e185d02baec3ef945", override: true},
       {:openaperture_overseer_api, git: "https://github.com/OpenAperture/overseer_api.git", ref: "4d65d2295f2730bc74ec695c32fa0d2478158182", override: true},
       {:openaperture_fleet, git: "https://github.com/OpenAperture/fleet.git", ref: "714c52b5258f96e741b57c73577431caa6f480b3", override: true},
