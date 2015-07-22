@@ -16,9 +16,11 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
   @spec start_link(Map) :: {:ok, pid} | {:error, String.t}
   def start_link(deploy_request) do
     Logger.debug("[Milestones.Deploy] Starting a new Deployment task for Workflow #{deploy_request.workflow.id}...")
+
     Task.start_link(fn -> 
       deploy_request = DeployerRequest.publish_success_notification(deploy_request, "The deploy milestone has been received and is being processed by Deployer #{System.get_env("HOSTNAME")} in cluster #{deploy_request.etcd_token}")
-      
+      deploy_request = DeployerRequest.save_workflow(deploy_request)
+
       try do
         successful_deploy_request = Deploy.deploy(deploy_request)
 

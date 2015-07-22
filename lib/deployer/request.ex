@@ -147,4 +147,19 @@ defmodule OpenAperture.Deployer.Request do
         Logger.error("[DeployerRequest] Failed to acknowledge message #{deploy_request.delivery_tag} - Caught #{inspect what} with #{inspect value}")
     end      
   end
+
+  @doc """
+  Convenience wrapper to save the updated Workflow
+  ## Options
+   
+  The `builder_request` option defines the Request
+  The `message` option defines the message to publish
+  ## Return values
+  Request
+  """
+  @spec save_workflow(OpenAperture.Deployer.Request.t) :: OpenAperture.Deployer.Request.t
+  def save_workflow(deploy_request) do
+    orchestrator_request = Workflow.save(deploy_request.orchestrator_request)
+    %{deploy_request | orchestrator_request: orchestrator_request, workflow: orchestrator_request.workflow}
+  end
 end

@@ -17,7 +17,8 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
     Logger.debug("[Milestones.Monitor] Starting a new Deployment Monitoring task for Workflow #{deploy_request.workflow.id}...")
     Task.start_link(fn -> 
       deploy_request = DeployerRequest.publish_success_notification(deploy_request, "The deploy (monitor) milestone has been received and is being processed by Deployer #{System.get_env("HOSTNAME")} in cluster #{deploy_request.etcd_token}")
-      
+      deploy_request = DeployerRequest.save_workflow(deploy_request)
+
       try do
         Monitor.monitor(deploy_request, 0) 
       catch
@@ -211,6 +212,7 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
       remaining_units_cnt = length(remaining_units)
 
       deploy_request = DeployerRequest.publish_success_notification(deploy_request, "After review, there are #{remaining_units_cnt} units still deploying...")
+      deploy_request = DeployerRequest.save_workflow(deploy_request)
       if remaining_units_cnt > 0 do
         monitoring_loop_cnt = monitoring_loop_cnt + 1
         if (monitoring_loop_cnt < 30) do

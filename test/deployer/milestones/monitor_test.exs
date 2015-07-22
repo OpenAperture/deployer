@@ -169,6 +169,7 @@ defmodule OpenAperture.Deployer.Milestones.MonitorTest do
     :meck.new(DeployerRequest, [:passthrough])
     :meck.expect(DeployerRequest, :publish_success_notification, fn _,_ -> deployer_request end)
     :meck.expect(DeployerRequest, :step_failed, fn _,_,_ -> deployer_request end)    
+    :meck.expect(DeployerRequest, :save_workflow, fn req -> req end)
 
     returned_request = Monitor.monitor(deployer_request, 30)
     assert returned_request != nil
@@ -210,6 +211,7 @@ defmodule OpenAperture.Deployer.Milestones.MonitorTest do
     :meck.new(DeployerRequest, [:passthrough])
     :meck.expect(DeployerRequest, :publish_success_notification, fn _,_ -> deployer_request end)
     :meck.expect(DeployerRequest, :step_failed, fn _,_,_ -> deployer_request end)    
+    :meck.expect(DeployerRequest, :save_workflow, fn req -> req end)
 
     returned_request = Monitor.monitor_remaining_units(deployer_request, 30, [%SystemdUnit{}], [], [])
     assert returned_request != nil
