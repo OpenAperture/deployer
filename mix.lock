@@ -16,10 +16,10 @@
   "openaperture_manager_api": {:git, "https://github.com/OpenAperture/manager_api.git", "84eedf15d805e6a827b3d62978b5a20244c99094", [ref: "84eedf15d805e6a827b3d62978b5a20244c99094"]},
   "openaperture_messaging": {:git, "https://github.com/OpenAperture/messaging.git", "e48c52b98abc86f4404954e7b4c85b090e83c69c", [ref: "e48c52b98abc86f4404954e7b4c85b090e83c69c"]},
   "openaperture_overseer_api": {:git, "https://github.com/OpenAperture/overseer_api.git", "4d65d2295f2730bc74ec695c32fa0d2478158182", [ref: "4d65d2295f2730bc74ec695c32fa0d2478158182"]},
-  "openaperture_workflow_orchestrator_api": {:git, "https://github.com/OpenAperture/workflow_orchestrator_api.git", "c9c4175117f4807fb312637374d8119772913e3e", [ref: "c9c4175117f4807fb312637374d8119772913e3e"]},
+  "openaperture_workflow_orchestrator_api": {:git, "https://github.com/OpenAperture/workflow_orchestrator_api.git", "c66fa165e9ee07250d264b4b63ce375692e2b7cc", [ref: "c66fa165e9ee07250d264b4b63ce375692e2b7cc"]},
   "poison": {:hex, :poison, "1.4.0"},
   "rabbit_common": {:hex, :rabbit_common, "3.5.0"},
   "ssl_verify_hostname": {:hex, :ssl_verify_hostname, "1.0.5"},
   "timex": {:hex, :timex, "0.12.9"},
-  "timex_extensions": {:git, "https://github.com/OpenAperture/timex_extensions.git", "904f65f7f9f5d4e52619859e886c2e9a73b96bc0", [ref: "904f65f7f9f5d4e52619859e886c2e9a73b96bc0"]},
+  "timex_extensions": {:git, "https://github.com/OpenAperture/timex_extensions.git", "1665c1df90397702daf492c6f940e644085016cd", [ref: "1665c1df90397702daf492c6f940e644085016cd"]},
   "uuid": {:hex, :uuid, "0.1.5"}}
