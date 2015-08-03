@@ -36,7 +36,7 @@ defmodule OpenAperture.Deployer.Mixfile do
       {:openaperture_fleet, git: "https://github.com/OpenAperture/fleet.git", ref: "714c52b5258f96e741b57c73577431caa6f480b3", override: true},
       {:openaperture_workflow_orchestrator_api, git: "https://github.com/OpenAperture/workflow_orchestrator_api.git", ref: "c66fa165e9ee07250d264b4b63ce375692e2b7cc", override: true},
       {:timex, "~> 0.12.9"},
-      {:fleet_api, "~> 0.0.14", override: true},
+      {:fleet_api, "~> 0.0.15", override: true},
 
       #test dependencies
       {:exvcr, github: "parroty/exvcr", only: :test},
