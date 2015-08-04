@@ -122,6 +122,7 @@ defmodule OpenAperture.Deployer.Milestones.MonitorTest do
     :meck.unload(SystemdUnit)
   end
 
+  @tag timeout: 45_000
   test "verify_unit_status - launched and failed" do
     :meck.new(SystemdUnit, [:passthrough])
     :meck.expect(SystemdUnit, :is_launched?, fn _ -> true end)
