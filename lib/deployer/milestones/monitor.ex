@@ -318,7 +318,7 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
   {remaining_units_to_monitor, completed_units, failed_units}
   """
   @spec verify_unit_status(List, String.t(), List, List, List) :: {List, List, List}
-  def verify_unit_status([current_unit| remaining_units], etcd_token,  remaining_units_to_monitor, completed_units, failed_units) do    
+  def verify_unit_status([current_unit| remaining_units] = all_units, etcd_token,  remaining_units_to_monitor, completed_units, failed_units, failure_count \\ 0) do    
     case SystemdUnit.is_launched?(current_unit) do
       true -> Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} has been launched")
       {false, "loaded"} -> 
@@ -328,7 +328,7 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
       {false, current_launch_state} -> 
         Logger.error("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} is in an incorrect state:  #{current_launch_state}")
     end
-
+    retry = false
     case SystemdUnit.is_active?(current_unit) do
       true -> 
         Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} is active")
@@ -339,14 +339,23 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
       {false, nil, _, _} -> 
         Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} has not registered a status yet...")
         remaining_units_to_monitor = remaining_units_to_monitor ++ [current_unit]
-      {false, active_state, load_state, "failed"} -> 
-        Logger.error("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} has failed to start:  #{active_state}; load state:  #{load_state}!")
-        failed_units = failed_units ++ [current_unit]
+      {false, active_state, load_state, "failed"} ->
+        cond do
+          failure_count >= 3 ->
+            Logger.error("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} has failed to start:  #{active_state}; load state:  #{load_state}!")
+            failed_units = failed_units ++ [current_unit]
+          true ->
+            :timer.sleep(10_000)
+            retry = true
+        end
       {false, active_state, load_state, sub_state} ->
         Logger.error("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} is #{active_state}; load state:  #{load_state}, sub state:  #{sub_state}!")
         failed_units = failed_units ++ [current_unit]
     end
-
-    verify_unit_status(remaining_units, etcd_token, remaining_units_to_monitor, completed_units, failed_units)
+    if retry do
+      verify_unit_status(all_units, etcd_token, remaining_units_to_monitor, completed_units, failed_units, failure_count + 1)
+    else
+      verify_unit_status(remaining_units, etcd_token, remaining_units_to_monitor, completed_units, failed_units)
+    end
   end 
 end
