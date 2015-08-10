@@ -17,3 +17,6 @@ config :openaperture_overseer_api,
 	autostart: false,	
 	exchange_id: "1",
 	broker_id: "1"
+
+config :openaperture_deployer,
+  milestone_monitor_sleep_seconds: 1
