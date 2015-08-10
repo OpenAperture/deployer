@@ -6,6 +6,7 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
   alias OpenAperture.Deployer.Milestones.Deploy
   alias OpenAperture.Deployer.Request, as: DeployerRequest
   alias OpenAperture.Deployer.Milestones.Monitor
+  alias OpenAperture.Deployer.MilestoneMonitor
 
   alias OpenAperture.Fleet.EtcdCluster
 

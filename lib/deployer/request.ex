@@ -17,7 +17,8 @@ defmodule OpenAperture.Deployer.Request do
             deployable_units: nil,
             deployed_units: nil,
 	  				delivery_tag: nil,
-            subscription_handler: nil
+            subscription_handler: nil,
+            last_total_duration_warning: nil
 
   @type t :: %__MODULE__{}
 

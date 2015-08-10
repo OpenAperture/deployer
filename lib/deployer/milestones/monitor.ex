@@ -4,6 +4,7 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
   require Logger
 
   alias OpenAperture.Deployer.Milestones.Monitor
+  alias OpenAperture.Deployer.MilestoneMonitor
   alias OpenAperture.Deployer.Request, as: DeployerRequest
 
   alias OpenAperture.Fleet.SystemdUnit
