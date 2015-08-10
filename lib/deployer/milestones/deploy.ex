@@ -22,7 +22,7 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
       deploy_request = DeployerRequest.save_workflow(deploy_request)
 
       try do
-        successful_deploy_request = Deploy.deploy(deploy_request)
+        successful_deploy_request = MilestoneMonitor.monitor(deploy_request, :deploy, fn -> Deploy.deploy(deploy_request) end)
 
         successful_deploy_request = DeployerRequest.publish_success_notification(successful_deploy_request, "The units has been deployed, starting deployment monitor...")
         Logger.debug("[Milestones.Deploy] Successfully completed the Deployment task for Workflow #{deploy_request.workflow.id}, requesting monitoring...")
