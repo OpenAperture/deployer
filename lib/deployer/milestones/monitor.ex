@@ -20,7 +20,7 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
       deploy_request = DeployerRequest.save_workflow(deploy_request)
 
       try do
-        Monitor.monitor(deploy_request, 0) 
+        MilestoneMonitor.monitor(deploy_request, :monitor_deploy, fn -> Monitor.monitor(deploy_request, 0)  end)
       catch
         :exit, code   -> 
           Logger.error("[Milestones.Monitor] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Exited with code #{inspect code}")
