@@ -9,6 +9,10 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
 
   alias OpenAperture.Fleet.SystemdUnit
 
+  alias OpenAperture.Deployer.Configuration
+  alias OpenAperture.ManagerApi
+  alias OpenAperture.ManagerApi.SystemEvent 
+
   @doc """
   Starts a new Deployment Task.
   Returns `{:ok, pid}` or `{:error, reason}`
@@ -24,14 +28,50 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
         MilestoneMonitor.monitor(deploy_request, :monitor_deploy, fn -> Monitor.monitor(deploy_request, 0)  end)
       catch
         :exit, code   -> 
-          Logger.error("[Milestones.Monitor] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Exited with code #{inspect code}")
+          error_msg = "[Milestones.Monitor] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Exited with code #{inspect code}"
+          Logger.error(error_msg)
           DeployerRequest.step_failed(deploy_request, "An unexpected error occurred executing deploy (monitor) request", "Exited with code #{inspect code}")
+          event = %{
+          type: :unhandled_exception, 
+            severity: :error, 
+            data: %{
+              component: :deployer,
+              exchange_id: Configuration.get_current_exchange_id,
+              hostname: System.get_env("HOSTNAME")
+            },
+            message: error_msg
+          }       
+          SystemEvent.create_system_event!(ManagerApi.get_api, event)         
         :throw, value -> 
-          Logger.error("[Milestones.Monitor] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Throw called with #{inspect value}")
+          error_msg = "[Milestones.Monitor] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Throw called with #{inspect value}"
+          Logger.error(error_msg)
           DeployerRequest.step_failed(deploy_request, "An unexpected error occurred executing deploy (monitor) request", "Throw called with #{inspect value}")
+          event = %{
+          type: :unhandled_exception, 
+            severity: :error, 
+            data: %{
+              component: :deployer,
+              exchange_id: Configuration.get_current_exchange_id,
+              hostname: System.get_env("HOSTNAME")
+            },
+            message: error_msg
+          }       
+          SystemEvent.create_system_event!(ManagerApi.get_api, event)         
         what, value   -> 
-          Logger.error("[Milestones.Monitor] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Caught #{inspect what} with #{inspect value}")
+          error_msg = "[Milestones.Monitor] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Caught #{inspect what} with #{inspect value}"
+          Logger.error(error_msg)
           DeployerRequest.step_failed(deploy_request, "An unexpected error occurred executing deploy (monitor) request", "Caught #{inspect what} with #{inspect value}")
+          event = %{
+          type: :unhandled_exception, 
+            severity: :error, 
+            data: %{
+              component: :deployer,
+              exchange_id: Configuration.get_current_exchange_id,
+              hostname: System.get_env("HOSTNAME")
+            },
+            message: error_msg
+          }       
+          SystemEvent.create_system_event!(ManagerApi.get_api, event)       
       end
     end)
   end
