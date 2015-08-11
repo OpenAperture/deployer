@@ -38,7 +38,8 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
           Logger.error(error_msg)
           DeployerRequest.step_failed(deploy_request, "An unexpected error occurred executing deploy request", "Exited with code #{inspect code}")
           event = %{
-          type: :unhandled_exception, 
+            unique: true,
+            type: :unhandled_exception, 
             severity: :error, 
             data: %{
               component: :deployer,
@@ -53,7 +54,8 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
           Logger.error(error_msg)
           DeployerRequest.step_failed(deploy_request, "An unexpected error occurred executing deploy request", "Throw called with #{inspect value}")
           event = %{
-          type: :unhandled_exception, 
+            unique: true,
+            type: :unhandled_exception, 
             severity: :error, 
             data: %{
               component: :deployer,
@@ -68,7 +70,8 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
           Logger.error(error_msg)
           DeployerRequest.step_failed(deploy_request, "An unexpected error occurred executing deploy request", "Caught #{inspect what} with #{inspect value}")
           event = %{
-          type: :unhandled_exception, 
+            unique: true,
+            type: :unhandled_exception, 
             severity: :error, 
             data: %{
               component: :deployer,
