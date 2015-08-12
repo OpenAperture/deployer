@@ -138,7 +138,9 @@ defmodule OpenAperture.Deployer.Request do
   def acknowledge(deploy_request) do
     try do
       message = MessageManager.remove(deploy_request.delivery_tag)
-      SubscriptionHandler.acknowledge(message[:subscription_handler], message[:delivery_tag])
+      if message != nil do 
+        SubscriptionHandler.acknowledge(message[:subscription_handler], message[:delivery_tag])
+      end
     catch
       :exit, code   -> 
         Logger.error("[DeployerRequest] Failed to acknowledge message #{deploy_request.delivery_tag} - Exited with code #{inspect code}")
