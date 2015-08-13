@@ -128,8 +128,10 @@ defmodule OpenAperture.Deployer.Milestones.MonitorTest do
     :meck.expect(SystemdUnit, :is_launched?, fn _ -> true end)
     :meck.expect(SystemdUnit, :is_active?, fn _ -> {false, "unknown", "load_state", "failed"} end)
     :meck.expect(SystemdUnit, :get_journal, fn _ -> {:ok, "stdout", "stderr"} end) 
+    unit_name = "#{UUID.uuid1()}"
+    :meck.expect(SystemdUnit, :get_units, fn _ -> [%SystemdUnit{name: unit_name, systemdActiveState: "failed"}] end)
 
-    {remaining_units_to_monitor, completed_units, failed_units} = Monitor.verify_unit_status([%SystemdUnit{}], "123abc", [], [], [])
+    {remaining_units_to_monitor, completed_units, failed_units} = Monitor.verify_unit_status([%SystemdUnit{name: unit_name, systemdActiveState: "failed"}], "123abc", [], [], [])
     assert length(remaining_units_to_monitor) == 0
     assert length(completed_units) == 0
     assert length(failed_units) == 1

@@ -362,7 +362,7 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
   {remaining_units_to_monitor, completed_units, failed_units}
   """
   @spec verify_unit_status(List, String.t(), List, List, List) :: {List, List, List}
-  def verify_unit_status([current_unit| remaining_units] = all_units, etcd_token,  remaining_units_to_monitor, completed_units, failed_units, failure_count \\ 0) do    
+  def verify_unit_status([current_unit| remaining_units], etcd_token,  remaining_units_to_monitor, completed_units, failed_units, failure_count \\ 0) do    
     case SystemdUnit.is_launched?(current_unit) do
       true -> Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} has been launched")
       {false, "loaded"} -> 
@@ -397,7 +397,9 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
         failed_units = failed_units ++ [current_unit]
     end
     if retry do
-      verify_unit_status(all_units, etcd_token, remaining_units_to_monitor, completed_units, failed_units, failure_count + 1)
+      #refresh the failed unit's status
+      refreshed_units = refresh_systemd_units(etcd_token, [current_unit])
+      verify_unit_status(refreshed_units ++ remaining_units, etcd_token, remaining_units_to_monitor, completed_units, failed_units, failure_count + 1)
     else
       verify_unit_status(remaining_units, etcd_token, remaining_units_to_monitor, completed_units, failed_units)
     end
