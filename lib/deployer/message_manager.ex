@@ -69,5 +69,4 @@ defmodule OpenAperture.Deployer.MessageManager do
       {message, Map.delete(messages, delivery_tag)}
     end)
   end
-  end
 end
