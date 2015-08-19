@@ -28,7 +28,7 @@ defmodule OpenAperture.Deployer.Dispatcher do
   Returns `{:ok, pid}` or `{:error, reason}` or one of a bunch of regular
   GenServer error responses. See GenServer docs for more details.
   """
-  @spec start_link(Dict) :: {:ok, pid} | {:error, String.t}
+  @spec start_link(Dict.t) :: {:ok, pid} | {:error, String.t}
   def start_link(opts \\ [name: __MODULE__]) do
     Logger.debug("Starting Dispatcher...")
     GenServer.start_link(__MODULE__, :ok, opts)
@@ -55,7 +55,7 @@ defmodule OpenAperture.Deployer.Dispatcher do
   end
 
   @doc false
-  @spec subscribe_for_queue(String.t, Fun) :: :ok | {:error, String.t}
+  @spec subscribe_for_queue(String.t, fun) :: :ok | {:error, String.t}
   defp subscribe_for_queue(name, handler) do
     if Mix.env == :test do
       {:ok, nil}

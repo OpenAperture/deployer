@@ -8,7 +8,7 @@ defmodule OpenAperture.Deployer do
 
   Returns `:ok` or `{:error, explanation}` otherwise.
   """
-  @spec start(:atom, [any]) :: :ok | {:error, String.t}
+  @spec start(atom, [any]) :: :ok | {:error, String.t}
   def start(_type, _args) do
     Logger.info("Starting Deployer...")
     OpenAperture.Deployer.Supervisor.start_link

@@ -18,7 +18,7 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
   Starts a new Deployment Task.
   Returns `{:ok, pid}` or `{:error, reason}`
   """
-  @spec start_link(Map) :: {:ok, pid} | {:error, String.t}
+  @spec start_link(map) :: {:ok, pid} | {:error, String.t}
   def start_link(deploy_request) do
     Logger.debug("[Milestones.Deploy] Starting a new Deployment task for Workflow #{deploy_request.workflow.id}...")
 
@@ -122,17 +122,17 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
     %{deploy_request | deployed_units: EtcdCluster.deploy_units(deploy_request.etcd_token, deploy_request.deployable_units, map_available_ports)}
   end
 
-  @spec build_port_map([], term, Map) :: Map
+  @spec build_port_map([], term, map) :: map
   defp build_port_map([], _, map_available_ports) do
     map_available_ports
   end
 
-  @spec build_port_map(List, term, Map) :: Map
+  @spec build_port_map(list, term, map) :: map
   defp build_port_map([deployable_unit | remaining_units], requested_instance_cnt, map_available_ports) do
     build_port_map(remaining_units, requested_instance_cnt, Map.put(map_available_ports, deployable_unit.name, create_port_list([], 0, requested_instance_cnt)))
   end
 
-  @spec create_port_list(List, term, term) :: List
+  @spec create_port_list(list, term, term) :: list
   defp create_port_list(list, cur_idx, max_cnt) do
     if cur_idx == max_cnt do
       list

@@ -33,7 +33,7 @@ defmodule OpenAperture.Deployer.Request do
 
   OpenAperture.WorkflowOrchestratorApi.Request.t
   """
-  @spec from_payload(Map, Map) :: OpenAperture.Deployer.Request.t
+  @spec from_payload(map, map) :: OpenAperture.Deployer.Request.t
   def from_payload(payload, %{subscription_handler: subscription_handler, delivery_tag: delivery_tag} = _async_info) do
   	orchestrator_request = OpenAperture.WorkflowOrchestratorApi.Request.from_payload(payload)
 
@@ -60,7 +60,7 @@ defmodule OpenAperture.Deployer.Request do
 
   Request
   """
-  @spec publish_success_notification(OpenAperture.Deployer.Request.t, String.t()) :: OpenAperture.Deployer.Request.t
+  @spec publish_success_notification(OpenAperture.Deployer.Request.t, String.t) :: OpenAperture.Deployer.Request.t
   def publish_success_notification(deploy_request, message) do
     Logger.debug("[DeployRequest][#{deploy_request.workflow.id}] #{message}")
     orchestrator_request = Workflow.publish_success_notification(deploy_request.orchestrator_request, message)
@@ -80,7 +80,7 @@ defmodule OpenAperture.Deployer.Request do
 
   Request
   """
-  @spec publish_failure_notification(OpenAperture.Deployer.Request.t, String.t(), String.t()) :: OpenAperture.Deployer.Request.t
+  @spec publish_failure_notification(OpenAperture.Deployer.Request.t, String.t, String.t) :: OpenAperture.Deployer.Request.t
   def publish_failure_notification(deploy_request, message, reason) do
     Logger.error("[DeployRequest][#{deploy_request.workflow.id}] #{message}\n\n#{reason}")
     orchestrator_request = Workflow.publish_failure_notification(deploy_request.orchestrator_request, "#{message}\n\n#{reason}")
@@ -102,7 +102,7 @@ defmodule OpenAperture.Deployer.Request do
 
   Request
   """
-  @spec step_failed(OpenAperture.Deployer.Request.t, String.t(), String.t()) :: OpenAperture.Deployer.Request.t
+  @spec step_failed(OpenAperture.Deployer.Request.t, String.t, String.t) :: OpenAperture.Deployer.Request.t
   def step_failed(deploy_request, message, reason) do
     acknowledge(deploy_request)
     orchestrator_request = Workflow.step_failed(deploy_request.orchestrator_request, message, reason)
