@@ -7,7 +7,7 @@ defmodule OpenAperture.Deployer.MilestoneMonitor do
 
   @logprefix "[MilestoneMonitor]"
 
-  @spec monitor(DeployerRequest.t, Atom, fun) :: DeployerRequest.t
+  @spec monitor(DeployerRequest.t, atom, fun) :: DeployerRequest.t
   def monitor(deployer_request, current_milestone, fun) do
     Logger.debug("#{@logprefix} Starting to monitor milestone #{inspect current_milestone} for workflow #{deployer_request.workflow.id}")
     

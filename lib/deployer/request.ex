@@ -33,7 +33,7 @@ defmodule OpenAperture.Deployer.Request do
 
   OpenAperture.WorkflowOrchestratorApi.Request.t
   """
-  @spec from_payload(Map, Map) :: OpenAperture.Deployer.Request.t
+  @spec from_payload(map, map) :: OpenAperture.Deployer.Request.t
   def from_payload(payload, %{subscription_handler: subscription_handler, delivery_tag: delivery_tag} = _async_info) do
   	orchestrator_request = OpenAperture.WorkflowOrchestratorApi.Request.from_payload(payload)
 

@@ -17,7 +17,7 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
   Starts a new Deployment Task.
   Returns `{:ok, pid}` or `{:error, reason}`
   """
-  @spec start_link(Map) :: {:ok, pid} | {:error, String.t}
+  @spec start_link(map) :: {:ok, pid} | {:error, String.t}
   def start_link(deploy_request) do
     Logger.debug("[Milestones.Monitor] Starting a new Deployment Monitoring task for Workflow #{deploy_request.workflow.id}...")
     Task.start_link(fn -> 
@@ -211,7 +211,7 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
 
   The updated DeployerRequest
   """
-  @spec log_monitoring_result(DeployerRequest, term, List, term) :: DeployerRequest
+  @spec log_monitoring_result(DeployerRequest, term, list, term) :: DeployerRequest
   def log_monitoring_result(deploy_request, monitoring_result, completed_units, num_requested_monitoring_units) do
     Logger.debug("[Milestones.Monitor] Resolving if ny units have successfully deployed, num_requested_monitoring_units - #{inspect num_requested_monitoring_units}, completed_units - #{inspect completed_units}")
     if num_requested_monitoring_units > 0 && length(completed_units) == 0 do
@@ -286,7 +286,7 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
    
   List
   """
-  @spec refresh_systemd_units(String.t(), List) :: List
+  @spec refresh_systemd_units(String.t, list) :: list
   def refresh_systemd_units(etcd_token, old_systemd_units) do
     if old_systemd_units == nil do
       Logger.debug("[Milestones.Monitor] There are no units to refresh")
@@ -337,7 +337,7 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
    
   {remaining_units_to_monitor, completed_units, failed_units}
   """
-  @spec verify_unit_status([], String.t(), List, List, List) :: {List, List, List}
+  @spec verify_unit_status([], String.t, list, list, list) :: {list, list, list}
   def verify_unit_status([], _, remaining_units_to_monitor, completed_units, failed_units) do
     {remaining_units_to_monitor, completed_units, failed_units}
   end 
@@ -361,7 +361,7 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
    
   {remaining_units_to_monitor, completed_units, failed_units}
   """
-  @spec verify_unit_status(List, String.t(), List, List, List) :: {List, List, List}
+  @spec verify_unit_status(list, String.t, list, list, list) :: {list, list, list}
   def verify_unit_status([current_unit| remaining_units], etcd_token,  remaining_units_to_monitor, completed_units, failed_units, failure_count \\ 0) do    
     case SystemdUnit.is_launched?(current_unit) do
       true -> Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} has been launched")
