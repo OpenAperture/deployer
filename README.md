@@ -6,6 +6,10 @@ OpenAperture Deployer
 OpenAperture Deployer is a part of the OpenAperture ecosystem responsible for actual
 deployment of containerazed applications to the CoreOS cluster.
 
+## Contributing
+
+To contribute to OpenAperture development, view our [contributing guide](http://openaperture.io/dev_resources/contributing.html)
+
 ## Communication with other components
 Deployer receives AMQP messages from OpenAperture Orchestrator (through an AMQP broker)
 to start the deployment routine.
