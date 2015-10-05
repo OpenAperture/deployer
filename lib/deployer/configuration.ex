@@ -43,6 +43,20 @@ defmodule OpenAperture.Deployer.Configuration do
     get_config("QUEUE_NAME", :openaperture_deployer, :queue_name)
   end
 
+  @doc """
+  Method to retrieve the currently assigned queue name for ECS (if declared)
+   
+  ## Options
+   
+  ## Return values
+
+  The exchange identifier
+  """ 
+  @spec get_ecs_queue_name() :: String.t
+  def get_ecs_queue_name do
+    get_config("QUEUE_NAME_ECS", :openaperture_deployer, :queue_name_ecs)
+  end
+
   @doc false
   # Method to retrieve a configuration option from the environment or config settings
   # 

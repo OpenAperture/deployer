@@ -14,13 +14,15 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
   alias OpenAperture.ManagerApi
   alias OpenAperture.ManagerApi.SystemEvent  
 
+  @logprefix "[Milestones.Deploy]"
+
   @doc """
   Starts a new Deployment Task.
   Returns `{:ok, pid}` or `{:error, reason}`
   """
   @spec start_link(map) :: {:ok, pid} | {:error, String.t}
   def start_link(deploy_request) do
-    Logger.debug("[Milestones.Deploy] Starting a new Deployment task for Workflow #{deploy_request.workflow.id}...")
+    Logger.debug("#{@logprefix} Starting a new Deployment task for Workflow #{deploy_request.workflow.id}...")
 
     Task.start_link(fn -> 
       deploy_request = DeployerRequest.publish_success_notification(deploy_request, "The deploy milestone has been received and is being processed by Deployer #{System.get_env("HOSTNAME")} in cluster #{deploy_request.etcd_token}")
@@ -30,59 +32,31 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
         successful_deploy_request = MilestoneMonitor.monitor(deploy_request, :deploy, fn -> Deploy.deploy(deploy_request) end)
 
         successful_deploy_request = DeployerRequest.publish_success_notification(successful_deploy_request, "The units has been deployed, starting deployment monitor...")
-        Logger.debug("[Milestones.Deploy] Successfully completed the Deployment task for Workflow #{deploy_request.workflow.id}, requesting monitoring...")
+        Logger.debug("#{@logprefix} Successfully completed the Deployment task for Workflow #{deploy_request.workflow.id}, requesting monitoring...")
         Monitor.start_link(successful_deploy_request)
       catch
-        :exit, code   -> 
-          error_msg = "[Milestones.Deploy] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Exited with code #{inspect code}"
-          Logger.error(error_msg)
-          DeployerRequest.step_failed(deploy_request, "An unexpected error occurred executing deploy request", "Exited with code #{inspect code}")
-          event = %{
-            unique: true,
-            type: :unhandled_exception, 
-            severity: :error, 
-            data: %{
-              component: :deployer,
-              exchange_id: Configuration.get_current_exchange_id,
-              hostname: System.get_env("HOSTNAME")
-            },
-            message: error_msg
-          }       
-          SystemEvent.create_system_event!(ManagerApi.get_api, event)              
-        :throw, value ->
-          error_msg = "[Milestones.Deploy] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Throw called with #{inspect value}"
-          Logger.error(error_msg)
-          DeployerRequest.step_failed(deploy_request, "An unexpected error occurred executing deploy request", "Throw called with #{inspect value}")
-          event = %{
-            unique: true,
-            type: :unhandled_exception, 
-            severity: :error, 
-            data: %{
-              component: :deployer,
-              exchange_id: Configuration.get_current_exchange_id,
-              hostname: System.get_env("HOSTNAME")
-            },
-            message: error_msg
-          }       
-          SystemEvent.create_system_event!(ManagerApi.get_api, event)           
-        what, value   -> 
-          error_msg = "[Milestones.Deploy] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Caught #{inspect what} with #{inspect value}"
-          Logger.error(error_msg)
-          DeployerRequest.step_failed(deploy_request, "An unexpected error occurred executing deploy request", "Caught #{inspect what} with #{inspect value}")
-          event = %{
-            unique: true,
-            type: :unhandled_exception, 
-            severity: :error, 
-            data: %{
-              component: :deployer,
-              exchange_id: Configuration.get_current_exchange_id,
-              hostname: System.get_env("HOSTNAME")
-            },
-            message: error_msg
-          }       
-          SystemEvent.create_system_event!(ManagerApi.get_api, event)           
+        :exit, code -> create_system_event(deploy_request, "[Milestones.Deploy] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Exited with code #{inspect code}")
+        :throw, value -> create_system_event(deploy_request, "[Milestones.Deploy] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Throw called with #{inspect value}")
+        what, value -> create_system_event(deploy_request, "[Milestones.Deploy] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Caught #{inspect what} with #{inspect value}")
       end
     end)
+  end
+
+  defp create_system_event(deploy_request, error_msg) do 
+    Logger.error(error_msg)
+    DeployerRequest.step_failed(deploy_request, error_msg)
+    event = %{
+      unique: true,
+      type: :unhandled_exception, 
+      severity: :error, 
+      data: %{
+        component: :deployer,
+        exchange_id: Configuration.get_current_exchange_id,
+        hostname: System.get_env("HOSTNAME")
+      },
+      message: error_msg
+    }       
+    SystemEvent.create_system_event!(ManagerApi.get_api, event)     
   end
 
   @doc """
@@ -90,7 +64,7 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
   """
   @spec deploy(DeployerRequest) :: DeployerRequest
   def deploy(deploy_request) do
-    Logger.info("[Milestones.Deploy] Beginning Fleet deployment...")
+    Logger.info("#{@logprefix} Beginning Fleet deployment...")
 
     host_cnt = EtcdCluster.get_host_count(deploy_request.etcd_token)
 
@@ -102,7 +76,7 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
       requested_instance_cnt = EtcdCluster.get_host_count(deploy_request.etcd_token)
     end
 
-    Logger.debug("[Milestones.Deploy] Reviewing units...")
+    Logger.debug("#{@logprefix} Reviewing units...")
     cond do
       host_cnt == 0 -> DeployerRequest.step_failed(deploy_request, "Deployment failed!", "Unable to find accessible hosts in cluster #{deploy_request.etcd_token}!")
       requested_instance_cnt == 0 -> DeployerRequest.step_failed(deploy_request, "Deployment failed!", "Cannot specify 0 instances of services to deploy!")
@@ -113,10 +87,10 @@ defmodule OpenAperture.Deployer.Milestones.Deploy do
 
   @spec do_deploy(DeployerRequest, term, term) :: DeployerRequest
   defp do_deploy(deploy_request, host_cnt, requested_instance_cnt) do
-    Logger.debug("[Milestones.Deploy] Allocating #{requested_instance_cnt} ports on the cluster...");
+    Logger.debug("#{@logprefix} Allocating #{requested_instance_cnt} ports on the cluster...");
     map_available_ports = build_port_map(deploy_request.deployable_units, requested_instance_cnt, %{})
 
-    Logger.debug("[Milestones.Deploy] Deploying units...")
+    Logger.debug("#{@logprefix} Deploying units...")
     deploy_request = DeployerRequest.publish_success_notification(deploy_request, "Preparing to deploy #{requested_instance_cnt} instance(s) of each of the #{length(deploy_request.deployable_units)} unit(s) onto #{host_cnt} host(s)...")
 
     %{deploy_request | deployed_units: EtcdCluster.deploy_units(deploy_request.etcd_token, deploy_request.deployable_units, map_available_ports)}

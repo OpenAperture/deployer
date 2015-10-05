@@ -13,13 +13,15 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
   alias OpenAperture.ManagerApi
   alias OpenAperture.ManagerApi.SystemEvent 
 
+  @logprefix "[Milestones.Monitor]"  
+
   @doc """
   Starts a new Deployment Task.
   Returns `{:ok, pid}` or `{:error, reason}`
   """
   @spec start_link(map) :: {:ok, pid} | {:error, String.t}
   def start_link(deploy_request) do
-    Logger.debug("[Milestones.Monitor] Starting a new Deployment Monitoring task for Workflow #{deploy_request.workflow.id}...")
+    Logger.debug("#{@logprefix} Starting a new Deployment Monitoring task for Workflow #{deploy_request.workflow.id}...")
     Task.start_link(fn -> 
       deploy_request = DeployerRequest.publish_success_notification(deploy_request, "The deploy (monitor) milestone has been received and is being processed by Deployer #{System.get_env("HOSTNAME")} in cluster #{deploy_request.etcd_token}")
       deploy_request = DeployerRequest.save_workflow(deploy_request)
@@ -27,56 +29,28 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
       try do
         MilestoneMonitor.monitor(deploy_request, :monitor_deploy, fn -> Monitor.monitor(deploy_request, 0)  end)
       catch
-        :exit, code   -> 
-          error_msg = "[Milestones.Monitor] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Exited with code #{inspect code}"
-          Logger.error(error_msg)
-          DeployerRequest.step_failed(deploy_request, "An unexpected error occurred executing deploy (monitor) request", "Exited with code #{inspect code}")
-          event = %{
-            unique: true,
-            type: :unhandled_exception, 
-            severity: :error, 
-            data: %{
-              component: :deployer,
-              exchange_id: Configuration.get_current_exchange_id,
-              hostname: System.get_env("HOSTNAME")
-            },
-            message: error_msg
-          }       
-          SystemEvent.create_system_event!(ManagerApi.get_api, event)         
-        :throw, value -> 
-          error_msg = "[Milestones.Monitor] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Throw called with #{inspect value}"
-          Logger.error(error_msg)
-          DeployerRequest.step_failed(deploy_request, "An unexpected error occurred executing deploy (monitor) request", "Throw called with #{inspect value}")
-          event = %{
-            unique: true,
-            type: :unhandled_exception, 
-            severity: :error, 
-            data: %{
-              component: :deployer,
-              exchange_id: Configuration.get_current_exchange_id,
-              hostname: System.get_env("HOSTNAME")
-            },
-            message: error_msg
-          }       
-          SystemEvent.create_system_event!(ManagerApi.get_api, event)         
-        what, value   -> 
-          error_msg = "[Milestones.Monitor] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Caught #{inspect what} with #{inspect value}"
-          Logger.error(error_msg)
-          DeployerRequest.step_failed(deploy_request, "An unexpected error occurred executing deploy (monitor) request", "Caught #{inspect what} with #{inspect value}")
-          event = %{
-            unique: true,
-            type: :unhandled_exception, 
-            severity: :error, 
-            data: %{
-              component: :deployer,
-              exchange_id: Configuration.get_current_exchange_id,
-              hostname: System.get_env("HOSTNAME")
-            },
-            message: error_msg
-          }       
-          SystemEvent.create_system_event!(ManagerApi.get_api, event)       
+        :exit, code -> create_system_event(deploy_request, "[Milestones.Monitor] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Exited with code #{inspect code}")
+        :throw, value -> create_system_event(deploy_request, "[Milestones.Monitor] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Throw called with #{inspect value}")
+        what, value -> create_system_event(deploy_request, "[Milestones.Monitor] Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Caught #{inspect what} with #{inspect value}")
       end
     end)
+  end
+
+  defp create_system_event(deploy_request, error_msg) do 
+    Logger.error(error_msg)
+    DeployerRequest.step_failed(deploy_request, error_msg)
+    event = %{
+      unique: true,
+      type: :unhandled_exception, 
+      severity: :error, 
+      data: %{
+        component: :deployer,
+        exchange_id: Configuration.get_current_exchange_id,
+        hostname: System.get_env("HOSTNAME")
+      },
+      message: error_msg
+    }       
+    SystemEvent.create_system_event!(ManagerApi.get_api, event)     
   end
 
   @doc """
@@ -91,7 +65,7 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
   @spec monitor(DeployerRequest, term) :: :ok | {:error, String.t}
   def monitor(deploy_request, monitoring_loop_cnt) do
     num_requested_monitoring_units = if deploy_request.deployed_units, do: length(deploy_request.deployed_units), else: 0
-    Logger.debug("[Milestones.Monitor] Monitoring the deployment of #{num_requested_monitoring_units} units on cluster #{deploy_request.etcd_token}...")
+    Logger.debug("#{@logprefix} Monitoring the deployment of #{num_requested_monitoring_units} units on cluster #{deploy_request.etcd_token}...")
     deploy_request = log_requested_units(deploy_request, num_requested_monitoring_units)
 
     {monitoring_result, updated_deploy_request, _units_to_monitor, completed_units, failed_units} = monitor_remaining_units(deploy_request, monitoring_loop_cnt, deploy_request.deployed_units, [], [])
@@ -144,10 +118,10 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
   @spec log_failed_units(DeployerRequest, term) :: DeployerRequest
   def log_failed_units(deploy_request, failed_units) do
     if length(failed_units) == 0 do      
-      Logger.debug("[Milestones.Monitor] There were no failed units")
+      Logger.debug("#{@logprefix} There were no failed units")
       deploy_request
     else      
-      Logger.debug("[Milestones.Monitor] Resolving failed unit names from:  #{inspect failed_units}")
+      Logger.debug("#{@logprefix} Resolving failed unit names from:  #{inspect failed_units}")
       {unit_names, deploy_request} =  Enum.reduce failed_units, {[], deploy_request}, fn(failed_unit, {unit_names, deploy_request}) ->
         if failed_unit != nil do
           deploy_request = case SystemdUnit.get_journal(failed_unit) do
@@ -178,7 +152,7 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
   """
   @spec log_completed_units(DeployerRequest, term) :: DeployerRequest
   def log_completed_units(deploy_request, completed_units) do
-    Logger.debug("[Milestones.Monitor] Resolving completed unit names from:  #{inspect completed_units}")
+    Logger.debug("#{@logprefix} Resolving completed unit names from:  #{inspect completed_units}")
     
     unit_names = if length(completed_units) > 0 do
       Enum.reduce completed_units, [], fn(completed_unit, unit_names) ->
@@ -213,7 +187,7 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
   """
   @spec log_monitoring_result(DeployerRequest, term, list, term) :: DeployerRequest
   def log_monitoring_result(deploy_request, monitoring_result, completed_units, num_requested_monitoring_units) do
-    Logger.debug("[Milestones.Monitor] Resolving if ny units have successfully deployed, num_requested_monitoring_units - #{inspect num_requested_monitoring_units}, completed_units - #{inspect completed_units}")
+    Logger.debug("#{@logprefix} Resolving if ny units have successfully deployed, num_requested_monitoring_units - #{inspect num_requested_monitoring_units}, completed_units - #{inspect completed_units}")
     if num_requested_monitoring_units > 0 && length(completed_units) == 0 do
       DeployerRequest.step_failed(deploy_request, "Deployment has failed!", "None of the units have deployed successfully")
     else
@@ -289,13 +263,13 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
   @spec refresh_systemd_units(String.t, list) :: list
   def refresh_systemd_units(etcd_token, old_systemd_units) do
     if old_systemd_units == nil do
-      Logger.debug("[Milestones.Monitor] There are no units to refresh")
+      Logger.debug("#{@logprefix} There are no units to refresh")
       []
     else
-      Logger.debug("[Milestones.Monitor] Refreshing SystemdUnits...")
+      Logger.debug("#{@logprefix} Refreshing SystemdUnits...")
       unit_map = Enum.reduce old_systemd_units, %{}, fn deployed_unit, unit_map ->
         if deployed_unit == nil do
-          Logger.error("[Milestones.Monitor] Unable to refresh all SystemdUnits, an invalid Unit was found in deployed_unit!")
+          Logger.error("#{@logprefix} Unable to refresh all SystemdUnits, an invalid Unit was found in deployed_unit!")
           unit_map
         else
           Map.put(unit_map, deployed_unit.name, deployed_unit)
@@ -304,7 +278,7 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
 
       all_units = SystemdUnit.get_units(etcd_token)
       if all_units == nil do
-        Logger.error("[Milestones.Monitor] Refreshing all SystemdUnits has failed!  SystemdUnit.get_units returned an invalid array of units")
+        Logger.error("#{@logprefix} Refreshing all SystemdUnits has failed!  SystemdUnit.get_units returned an invalid array of units")
         []
       else
         Enum.reduce all_units, [], fn refreshed_unit, refreshed_units ->
@@ -364,36 +338,36 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
   @spec verify_unit_status(list, String.t, list, list, list) :: {list, list, list}
   def verify_unit_status([current_unit| remaining_units], etcd_token,  remaining_units_to_monitor, completed_units, failed_units, failure_count \\ 0) do    
     case SystemdUnit.is_launched?(current_unit) do
-      true -> Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} has been launched")
+      true -> Logger.debug("#{@logprefix} Requested service #{current_unit.name} on cluster #{etcd_token} has been launched")
       {false, "loaded"} -> 
-        Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} has been loaded and is being launched...")
+        Logger.debug("#{@logprefix} Requested service #{current_unit.name} on cluster #{etcd_token} has been loaded and is being launched...")
       {false, "inactive"} -> 
-        Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} has been loaded (but not started), and is being launched...")
+        Logger.debug("#{@logprefix} Requested service #{current_unit.name} on cluster #{etcd_token} has been loaded (but not started), and is being launched...")
       {false, current_launch_state} -> 
-        Logger.error("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} is in an incorrect state:  #{current_launch_state}")
+        Logger.error("#{@logprefix} Requested service #{current_unit.name} on cluster #{etcd_token} is in an incorrect state:  #{current_launch_state}")
     end
     retry = false
     case SystemdUnit.is_active?(current_unit) do
       true -> 
-        Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} is active")
+        Logger.debug("#{@logprefix} Requested service #{current_unit.name} on cluster #{etcd_token} is active")
         completed_units = completed_units ++ [current_unit]
       {false, "activating", _, _} -> 
-        Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} is starting up...")
+        Logger.debug("#{@logprefix} Requested service #{current_unit.name} on cluster #{etcd_token} is starting up...")
         remaining_units_to_monitor = remaining_units_to_monitor ++ [current_unit]
       {false, nil, _, _} -> 
-        Logger.debug("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} has not registered a status yet...")
+        Logger.debug("#{@logprefix} Requested service #{current_unit.name} on cluster #{etcd_token} has not registered a status yet...")
         remaining_units_to_monitor = remaining_units_to_monitor ++ [current_unit]
       {false, active_state, load_state, "failed"} ->
         cond do
           failure_count >= 3 ->
-            Logger.error("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} has failed to start:  #{active_state}; load state:  #{load_state}!")
+            Logger.error("#{@logprefix} Requested service #{current_unit.name} on cluster #{etcd_token} has failed to start:  #{active_state}; load state:  #{load_state}!")
             failed_units = failed_units ++ [current_unit]
           true ->
             :timer.sleep(10_000)
             retry = true
         end
       {false, active_state, load_state, sub_state} ->
-        Logger.error("[Milestones.Monitor] Requested service #{current_unit.name} on cluster #{etcd_token} is #{active_state}; load state:  #{load_state}, sub state:  #{sub_state}!")
+        Logger.error("#{@logprefix} Requested service #{current_unit.name} on cluster #{etcd_token} is #{active_state}; load state:  #{load_state}, sub state:  #{sub_state}!")
         failed_units = failed_units ++ [current_unit]
     end
     if retry do

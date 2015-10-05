@@ -21,6 +21,7 @@ defmodule OpenAperture.Deployer.Dispatcher do
 
   alias OpenAperture.Deployer.Request, as: DeployRequest
   alias OpenAperture.Deployer.Milestones.Deploy
+  alias OpenAperture.Deployer.Milestones.DeployEcs
   alias OpenAperture.Deployer.MessageManager
 
   @doc """
@@ -42,7 +43,7 @@ defmodule OpenAperture.Deployer.Dispatcher do
     case subscribe_for_queue(Configuration.get_current_queue_name, &spawn_deployment_task/3) do
       {:ok, _} -> {:ok, %{}}
       {:error, reason} -> {:error, reason}
-    end    
+    end
   end
 
   @doc """
@@ -51,7 +52,12 @@ defmodule OpenAperture.Deployer.Dispatcher do
   """
   def spawn_deployment_task(payload, _meta, async_info) do
     MessageManager.track(async_info)
-    Deploy.start_link(DeployRequest.from_payload(payload, async_info))
+    deploy_request = DeployRequest.from_payload(payload, async_info)
+    cond do 
+      deploy_request.workflow.current_step == "deploy" || deploy_request.workflow.current_step == :deploy -> Deploy.start_link(deploy_request)
+      deploy_request.workflow.current_step == "deploy_ecs" || deploy_request.workflow.current_step == :deploy_ecs -> DeployEcs.start_link(deploy_request)
+      true -> DeployerRequest.step_failed(deploy_request, "An unknown milestone was passed into the Deployer:  #{inspect deploy_request.workflow.current_step}", "")
+    end
   end
 
   @doc false
