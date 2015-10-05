@@ -7,8 +7,6 @@ defmodule OpenAperture.Deployer.Milestones.MonitorEcs do
   alias OpenAperture.Deployer.MilestoneMonitor
   alias OpenAperture.Deployer.Request, as: DeployerRequest
 
-  alias OpenAperture.Fleet.SystemdUnit
-
   alias OpenAperture.Deployer.Configuration
   alias OpenAperture.ManagerApi
   alias OpenAperture.ManagerApi.SystemEvent 
