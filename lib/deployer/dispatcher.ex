@@ -56,7 +56,7 @@ defmodule OpenAperture.Deployer.Dispatcher do
     cond do 
       deploy_request.workflow.current_step == "deploy" || deploy_request.workflow.current_step == :deploy -> Deploy.start_link(deploy_request)
       deploy_request.workflow.current_step == "deploy_ecs" || deploy_request.workflow.current_step == :deploy_ecs -> DeployEcs.start_link(deploy_request)
-      true -> DeployerRequest.step_failed(deploy_request, "An unknown milestone was passed into the Deployer:  #{inspect deploy_request.workflow.current_step}", "")
+      true -> DeployRequest.step_failed(deploy_request, "An unknown milestone was passed into the Deployer:  #{inspect deploy_request.workflow.current_step}", "")
     end
   end
 
