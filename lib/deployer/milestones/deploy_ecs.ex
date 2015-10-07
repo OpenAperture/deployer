@@ -26,9 +26,11 @@ defmodule OpenAperture.Deployer.Milestones.DeployEcs do
       deploy_request = DeployerRequest.save_workflow(deploy_request)
 
       try do
-        successful_deploy_request = MilestoneMonitor.monitor(deploy_request, :deploy_ecs, fn -> DeployEcs.deploy(deploy_request) end)
-        successful_deploy_request = DeployerRequest.publish_success_notification(successful_deploy_request, "The units has been deployed.")
-        Logger.debug("#{@logprefix} Successfully completed the ECS Deployment task for Workflow #{deploy_request.workflow.id}, requesting monitoring...")
+        deploy_request
+        |> MilestoneMonitor.monitor(:deploy_ecs, fn -> DeployEcs.deploy(deploy_request) end)
+        |> DeployerRequest.publish_success_notification("The units has been deployed.")
+        |> DeployerRequest.save_workflow
+        Logger.debug("#{@logprefix} Successfully completed the ECS Deployment task for Workflow #{deploy_request.workflow.id}.")
       catch
         :exit, code -> create_system_event(deploy_request, "#{@logprefix} Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Exited with code #{inspect code}")
         :throw, value -> create_system_event(deploy_request, "#{@logprefix} Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Throw called with #{inspect value}")
