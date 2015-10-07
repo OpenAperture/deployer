@@ -29,7 +29,7 @@ defmodule OpenAperture.Deployer.Milestones.DeployEcs do
         deploy_request
         |> MilestoneMonitor.monitor(:deploy_ecs, fn -> DeployEcs.deploy(deploy_request) end)
         |> DeployerRequest.publish_success_notification("The units has been deployed.")
-        |> DeployerRequest.save_workflow
+        |> DeployerRequest.step_completed
         Logger.debug("#{@logprefix} Successfully completed the ECS Deployment task for Workflow #{deploy_request.workflow.id}.")
       catch
         :exit, code -> create_system_event(deploy_request, "#{@logprefix} Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Exited with code #{inspect code}")
