@@ -13,6 +13,7 @@ defmodule OpenAperture.Deployer.Mixfile do
       applications: [
         :logger,
         :amqp,
+        :aws,
         :fleet_api,
         :openaperture_fleet,
         :openaperture_messaging, 
@@ -37,6 +38,7 @@ defmodule OpenAperture.Deployer.Mixfile do
       {:openaperture_workflow_orchestrator_api, git: "https://github.com/OpenAperture/workflow_orchestrator_api.git", ref: "4e56be62204b4ac3f05facb518b54f19eeba0c70", override: true},
       {:timex, "~> 0.13.3", override: true},
       {:fleet_api, "~> 0.0.15", override: true},
+      {:aws, git: "https://github.com/jkakar/aws-elixir"},
 
       #test dependencies
       {:exvcr, github: "parroty/exvcr", only: :test},

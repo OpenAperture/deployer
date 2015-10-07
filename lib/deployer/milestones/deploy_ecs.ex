@@ -5,7 +5,6 @@ defmodule OpenAperture.Deployer.Milestones.DeployEcs do
 
   alias OpenAperture.Deployer.Milestones.DeployEcs
   alias OpenAperture.Deployer.Request, as: DeployerRequest
-  alias OpenAperture.Deployer.Milestones.MonitorEcs
   alias OpenAperture.Deployer.MilestoneMonitor
 
   alias OpenAperture.Deployer.Configuration
@@ -23,15 +22,13 @@ defmodule OpenAperture.Deployer.Milestones.DeployEcs do
     Logger.debug("#{@logprefix} Starting a new Deployment task for Workflow #{deploy_request.workflow.id}...")
 
     Task.start_link(fn -> 
-      deploy_request = DeployerRequest.publish_success_notification(deploy_request, "The deploy milestone has been received and is being processed by Deployer #{System.get_env("HOSTNAME")} in cluster #{deploy_request.etcd_token}")
+      deploy_request = DeployerRequest.publish_success_notification(deploy_request, "The deploy_ecs milestone has been received and is being processed by Deployer #{System.get_env("HOSTNAME")} in cluster #{deploy_request.etcd_token}")
       deploy_request = DeployerRequest.save_workflow(deploy_request)
 
       try do
         successful_deploy_request = MilestoneMonitor.monitor(deploy_request, :deploy_ecs, fn -> DeployEcs.deploy(deploy_request) end)
-
-        successful_deploy_request = DeployerRequest.publish_success_notification(successful_deploy_request, "The units has been deployed, starting deployment monitor...")
-        Logger.debug("#{@logprefix} Successfully completed the Deployment task for Workflow #{deploy_request.workflow.id}, requesting monitoring...")
-        MonitorEcs.start_link(successful_deploy_request)
+        successful_deploy_request = DeployerRequest.publish_success_notification(successful_deploy_request, "The units has been deployed.")
+        Logger.debug("#{@logprefix} Successfully completed the ECS Deployment task for Workflow #{deploy_request.workflow.id}, requesting monitoring...")
       catch
         :exit, code -> create_system_event(deploy_request, "#{@logprefix} Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Exited with code #{inspect code}")
         :throw, value -> create_system_event(deploy_request, "#{@logprefix} Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Throw called with #{inspect value}")
@@ -63,8 +60,15 @@ defmodule OpenAperture.Deployer.Milestones.DeployEcs do
   @spec deploy(DeployerRequest) :: DeployerRequest
   def deploy(deploy_request) do
     Logger.info("#{@logprefix} Beginning ECS deployment...")
-
-
+    aws = deploy_request.orchestrator_request.aws_config
+    task_def = Poison.decode! deploy_request.orchestrator_request.ecs_task_definition
+    case OpenAperture.Deployer.ECS.deploy_task(aws, task_def) do
+      {:ok, status} ->
+        Logger.debug("#{@logprefix} Deploy to ECS successful: #{status}")
+      {:error, reason} ->
+        Logger.error("#{@logprefix} Deploy to ECS failed: #{inspect reason}")
+        raise reason
+    end
     #AWS config is in deploy_request.orchestrator_request.aws_config.  This is a map with string values
     deploy_request
   end

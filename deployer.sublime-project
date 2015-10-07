@@ -14,7 +14,8 @@
                   "${project}/_build/dev/lib/openaperture_messaging/ebin",
                   "${project}/_build/dev/lib/amqp/ebin",
                   "${project}/_build/dev/lib/timex_extensions/ebin",
-                  "${project}/_build/dev/lib/timex/ebin"
+                  "${project}/_build/dev/lib/timex/ebin",
+                  "${project}/_build/dev/lib/aws/ebin"
                 ]
             }
         }
