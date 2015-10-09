@@ -65,10 +65,16 @@ defmodule OpenAperture.Deployer.ECS do
             |> case do
               %{"status" => "PRIMARY", "runningCount" => rc, "desiredCount" => dc} when rc == dc and dc == task_count  ->
                 {:ok, "Task #{task_arn} running in service #{service} on cluster #{cluster}"}
-              %{"status" => "PRIMARY", "runningCount" => rc, "desiredCount" => dc} when rc == dc and dc == task_count - 1 ->
-                update_service(client, aws, task_arn, true)
               %{"status" => "ACTIVE"} ->
                 {:ok, "Task #{task_arn} running in service #{service} on cluster #{cluster}"}
+              %{"status" => "PRIMARY", "runningCount" => rc, "desiredCount" => dc} when rc == dc and dc == task_count - 1 ->
+                cond do
+                  Enum.any?(deployments, fn %{"status" => status } -> status == "ACTIVE" end) ->
+                    :timer.sleep(5000)
+                    monitor_service(client, aws, task_arn)
+                  true               ->
+                    update_service(client, aws, task_arn, true)
+                end
               %{"status" => "PRIMARY"} ->
                 :timer.sleep(5000)
                 monitor_service(client, aws, task_arn)
