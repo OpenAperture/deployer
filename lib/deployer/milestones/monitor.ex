@@ -38,7 +38,7 @@ defmodule OpenAperture.Deployer.Milestones.Monitor do
 
   defp create_system_event(deploy_request, error_msg) do 
     Logger.error(error_msg)
-    DeployerRequest.step_failed(deploy_request, error_msg)
+    DeployerRequest.step_failed(deploy_request, "An error occurred during monitoring", error_msg)
     event = %{
       unique: true,
       type: :unhandled_exception, 
