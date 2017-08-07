@@ -1,6 +1,6 @@
 OpenAperture Deployer
 ===============
-
+ 
 [![Build Status](https://semaphoreci.com/api/v1/projects/079e9417-79fb-44f7-b06d-f7a7f0f5cda5/413620/badge.svg)](https://semaphoreci.com/perceptive/openaperture_deployer)
 
 OpenAperture Deployer is a part of the OpenAperture ecosystem responsible for actual
