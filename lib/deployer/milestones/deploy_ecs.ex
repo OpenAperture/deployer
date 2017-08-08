@@ -1,6 +1,6 @@
 defmodule OpenAperture.Deployer.Milestones.DeployEcs do
   @moduledoc "Defines a single deployment task."
-  
+
   require Logger
 
   alias OpenAperture.Deployer.Milestones.DeployEcs
@@ -9,7 +9,7 @@ defmodule OpenAperture.Deployer.Milestones.DeployEcs do
 
   alias OpenAperture.Deployer.Configuration
   alias OpenAperture.ManagerApi
-  alias OpenAperture.ManagerApi.SystemEvent  
+  alias OpenAperture.ManagerApi.SystemEvent
 
   @logprefix "[Milestones.DeployEcs]"
 
@@ -21,7 +21,7 @@ defmodule OpenAperture.Deployer.Milestones.DeployEcs do
   def start_link(deploy_request) do
     Logger.debug("#{@logprefix} Starting a new Deployment task for Workflow #{deploy_request.workflow.id}...")
 
-    Task.start_link(fn -> 
+    Task.start_link(fn ->
       deploy_request = DeployerRequest.publish_success_notification(deploy_request, "The deploy_ecs milestone has been received and is being processed by Deployer #{System.get_env("HOSTNAME")} in cluster #{deploy_request.etcd_token}")
       deploy_request = DeployerRequest.save_workflow(deploy_request)
 
@@ -39,21 +39,21 @@ defmodule OpenAperture.Deployer.Milestones.DeployEcs do
     end)
   end
 
-  defp create_system_event(deploy_request, error_msg) do 
+  defp create_system_event(deploy_request, error_msg) do
     Logger.error(error_msg)
     DeployerRequest.step_failed(deploy_request, "An error occurred during ECS deployment", error_msg)
     event = %{
       unique: true,
-      type: :unhandled_exception, 
-      severity: :error, 
+      type: :unhandled_exception,
+      severity: :error,
       data: %{
         component: :deployer,
         exchange_id: Configuration.get_current_exchange_id,
         hostname: System.get_env("HOSTNAME")
       },
       message: error_msg
-    }       
-    SystemEvent.create_system_event!(ManagerApi.get_api, event)     
+    }
+    SystemEvent.create_system_event!(ManagerApi.get_api, event)
   end
 
   @doc """
@@ -69,7 +69,7 @@ defmodule OpenAperture.Deployer.Milestones.DeployEcs do
         Logger.debug("#{@logprefix} Deploy to ECS successful: #{status}")
       {:error, reason} ->
         Logger.error("#{@logprefix} Deploy to ECS failed: #{inspect reason}")
-        raise reason
+        DeployerRequest.step_failed(deploy_request, "Deployment failed!", "Deploy to ECS Failed: #{inspect reason}")
     end
     #AWS config is in deploy_request.orchestrator_request.aws_config.  This is a map with string values
     deploy_request
