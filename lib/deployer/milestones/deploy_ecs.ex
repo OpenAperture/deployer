@@ -33,8 +33,7 @@ defmodule OpenAperture.Deployer.Milestones.DeployEcs do
         Logger.debug("#{@logprefix} Successfully completed the ECS Deployment task for Workflow #{deploy_request.workflow.id}.")
       catch
         :exit, code -> create_system_event(deploy_request, "#{@logprefix} Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Exited with code #{inspect code}")
-        :throw, value -> create_system_event(deploy_request, "#{@logprefix} Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Throw called with #{inspect value}")
-        what, value -> create_system_event(deploy_request, "#{@logprefix} Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Caught #{inspect what} with #{inspect value}")
+        value -> create_system_event(deploy_request, "#{@logprefix} Message #{deploy_request.delivery_tag} (workflow #{deploy_request.workflow.id}) Caught #{inspect value}")
       end
     end)
   end
@@ -70,7 +69,7 @@ defmodule OpenAperture.Deployer.Milestones.DeployEcs do
         deploy_request
       {:error, reason} ->
         Logger.error("#{@logprefix} Deploy to ECS failed: #{inspect reason}")
-        throw :throw, {"Deploy to ECS Failed", reason}
+        throw {"Deploy to ECS Failed", reason}
     end
   end
 end
