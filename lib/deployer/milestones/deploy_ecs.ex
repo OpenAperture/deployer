@@ -67,11 +67,10 @@ defmodule OpenAperture.Deployer.Milestones.DeployEcs do
     case OpenAperture.Deployer.ECS.deploy_task(aws, task_def) do
       {:ok, status} ->
         Logger.debug("#{@logprefix} Deploy to ECS successful: #{status}")
+        deploy_request
       {:error, reason} ->
         Logger.error("#{@logprefix} Deploy to ECS failed: #{inspect reason}")
         DeployerRequest.step_failed(deploy_request, "Deployment failed!", "Deploy to ECS Failed: #{inspect reason}")
     end
-    #AWS config is in deploy_request.orchestrator_request.aws_config.  This is a map with string values
-    deploy_request
   end
 end
