@@ -10,11 +10,15 @@ defmodule OpenAperture.Deployer.MilestoneMonitor do
   @spec monitor(DeployerRequest.t, atom, fun) :: DeployerRequest.t
   def monitor(deployer_request, current_milestone, fun) do
     Logger.debug("#{@logprefix} Starting to monitor milestone #{inspect current_milestone} for workflow #{deployer_request.workflow.id}")
-    
+
     {:ok, completed_agent_pid} = Agent.start_link(fn -> nil end)
     Task.async(fn ->
         Logger.debug("#{@logprefix}[#{deployer_request.workflow.id}][#{inspect current_milestone}] Starting milestone")
-        ret = fun.()
+        ret = try do
+          fun.()
+        catch
+          x -> {:throw, x}
+        end
         Logger.debug("#{@logprefix}[#{deployer_request.workflow.id}][#{inspect current_milestone}] Completed milestone")
         Agent.update(completed_agent_pid, fn _ -> ret end)
     end)
@@ -44,9 +48,12 @@ defmodule OpenAperture.Deployer.MilestoneMonitor do
           orchestrator_request = OrchestratorWorkflow.publish_failure_notification(deployer_request.orchestrator_request, "Warning: Builder request #{current_milestone} milestone running for #{ time_since_last_step_duration_warning} minutes. Total workflow duration: #{workflow_duration} minutes.")
           deployer_request = %{deployer_request | orchestrator_request: orchestrator_request, workflow: orchestrator_request.workflow}
           last_alert = Time.now()
-        end  
+        end
 
         monitor_internal(completed_agent_pid, deployer_request, current_milestone, last_alert)
+      {:throw, thrown} ->
+        Logger.debug("#{@logprefix} Finished monitoring milestone #{inspect current_milestone} for workflow #{deployer_request.workflow.id}")
+        throw thrown
       ret ->
         Logger.debug("#{@logprefix} Finished monitoring milestone #{inspect current_milestone} for workflow #{deployer_request.workflow.id}")
         ret
