@@ -70,7 +70,7 @@ defmodule OpenAperture.Deployer.Milestones.DeployEcs do
         deploy_request
       {:error, reason} ->
         Logger.error("#{@logprefix} Deploy to ECS failed: #{inspect reason}")
-        DeployerRequest.step_failed(deploy_request, "Deployment failed!", "Deploy to ECS Failed: #{inspect reason}")
+        throw {"Deploy to ECS Failed", reason}
     end
   end
 end
